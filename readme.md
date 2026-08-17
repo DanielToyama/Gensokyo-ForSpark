@@ -1,5 +1,17 @@
 
 
+# Gensokyo-ForSpark
+
+**本项目是基于 [hoshinonyaruko/gensokyo](https://github.com/hoshinonyaruko/gensokyo) 的 GPLv3 分叉版本**，针对 SparkBridge 群服互通场景进行了魔改，由 DanielToyama 独立维护，**不再与原上游同步**。
+
+## 致谢 / Acknowledgements
+
+- 原项目：[hoshinonyaruko/gensokyo](https://github.com/hoshinonyaruko/gensokyo)（[GPLv3](LICENSE)），原作者 [SanaeFox](https://github.com/Hoshinonyaruko) 及上游所有贡献者
+- 本项目在原项目基础上增加了群服互通相关能力（详见下方说明），**原版权声明与 LICENSE 全文保留**，各修改文件头部已标注 `Modified by DanielToyama` 修改声明
+- 若你使用本项目发现问题，请在本仓库反馈，**不要向上游提交与本项目相关的问题**
+
+---
+
 > ##  本 Fork 为针对[Sparkbridge-群服互通机器人](https://sparkbridge.cn)使用场景魔改开发版本
 >
 > 基于 [hoshinonyaruko/gensokyo](https://github.com/hoshinonyaruko/gensokyo) 上游分支，为满足群服互通场景需求，在官方代码基础上增加了以下修改（**未合并回官方，基本vibe加小测试，代码可靠性未知，请勿向官方提 PR**）：

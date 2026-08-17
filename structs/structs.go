@@ -1,5 +1,7 @@
 package structs
 
+// Modified by DanielToyama on 2026-08-17 (Gensokyo-ForSpark fork)
+
 type FriendData struct {
 	Nickname string `json:"nickname"`
 	Remark   string `json:"remark"`

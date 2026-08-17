@@ -1,6 +1,8 @@
 // 处理收到的信息事件
 package Processor
 
+// Modified by DanielToyama on 2026-08-17 (Gensokyo-ForSpark fork)
+
 import (
 	"fmt"
 	"log"

@@ -1,5 +1,7 @@
 package openapi
 
+// Modified by DanielToyama on 2026-08-17 (Gensokyo-ForSpark fork)
+
 import (
 	"context"
 	"time"

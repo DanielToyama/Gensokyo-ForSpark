@@ -1,5 +1,7 @@
 package dto
 
+// Modified by DanielToyama on 2026-08-17 (Gensokyo-ForSpark fork)
+
 // EventType 事件类型
 type EventType string
 

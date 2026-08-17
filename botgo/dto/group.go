@@ -1,5 +1,7 @@
 package dto
 
+// Modified by DanielToyama on 2026-08-17 (Gensokyo-ForSpark fork)
+
 // 群聊管理（API v2）数据结构
 // 对应线上文档: https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/
 // 获取群基本信息        GET /v2/groups/{group_openid}/info

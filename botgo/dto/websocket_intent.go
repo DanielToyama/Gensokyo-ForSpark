@@ -1,5 +1,7 @@
 package dto
 
+// Modified by DanielToyama on 2026-08-17 (Gensokyo-ForSpark fork)
+
 // Intent 类型
 type Intent int
 

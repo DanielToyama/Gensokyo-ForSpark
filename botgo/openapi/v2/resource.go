@@ -1,5 +1,7 @@
 package v2
 
+// Modified by DanielToyama on 2026-08-17 (Gensokyo-ForSpark fork)
+
 import (
 	"fmt"
 )

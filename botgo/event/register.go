@@ -1,5 +1,7 @@
 package event
 
+// Modified by DanielToyama on 2026-08-17 (Gensokyo-ForSpark fork)
+
 import (
 	"github.com/tencent-connect/botgo/dto"
 )

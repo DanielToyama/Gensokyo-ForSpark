@@ -1,5 +1,7 @@
 package template
 
+// Modified by DanielToyama on 2026-08-17 (Gensokyo-ForSpark fork)
+
 const ConfigTemplate = `
 version: 1
 settings:
