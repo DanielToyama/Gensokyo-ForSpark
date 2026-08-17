@@ -78,6 +78,8 @@
 >   - 变更内容：见上方「修复」维护通知条目；新增 `downtime_message_enabled`（总开关）与 `downtime_cooldown`（冷却分钟）两个配置项，根目录 `config.yml` 已同步补齐，可视化配置工具 `gensokyo-config-gen.html` 新增「⑥ 维护通知」卡片
 > - **2026-08-18**（DanielToyama）：发布物压缩方式与 CI 对齐（workflow 写法未改动）
 >   - 本地 `gensokyo.exe` 改用与 `.github/workflows/cross_compile.yml` 相同的压缩方式：`-s -w` 构建后 `upx --best`，32,862,208 B → 9,634,304 B（29.3%，与原 workflow Release 产物体积一致）
+> - **2026-08-18**（DanielToyama）：修复 Release workflow 产物丢失（`.github/workflows/cross_compile.yml`）
+>   - flatten 步骤改为拷贝到 `output/release/`：此前把 `gensokyo-linux-amd64` 等二进制直接拷到 `output/`，与同名 artifact 目录冲突导致 `cp` 失败（错误被 `2>/dev/null || true` 吞掉），Release 附件只剩 windows 一个
 > - **2026-08-17**（DanielToyama）：fork 建立：群全量消息接收、主动消息、`require_mention`、群管理接口、SparkBridge 互通适配（详见上方新增能力/修复，所有上游 LICENSE/copyright 声明保留）
 >
 > ### 方案优势（对比普通QQ小号挂机方案）
