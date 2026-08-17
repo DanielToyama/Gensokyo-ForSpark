@@ -22,3 +22,8 @@ webui/dist/
 data/
 
 .git-rewrite/
+# 本地测试/构建残留
+gensokyo-forspark.exe
+sensitive_words_*.txt
+white.txt
+
