@@ -75,8 +75,11 @@ jobs:
 
     - name: Flatten artifacts
       run: |
-        find output -type f \( -name "gensokyo-*" -o -name "gensokyo-*.exe" \) -exec cp {} output/ \; 2>/dev/null || true
-        ls -la output/
+        # [DanielToyama] 修复: 拷到 output/release/ 而非 output/,避免二进制名(gensokyo-linux-amd64)
+        # 与同名 artifact 目录冲突导致 cp 失败(错误被 2>/dev/null || true 吞掉, linux 产物丢失)
+        mkdir -p output/release
+        find output -type f \( -name "gensokyo-*" -o -name "gensokyo-*.exe" \) -exec cp {} output/release/ \; 2>/dev/null || true
+        ls -la output/release/
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -86,6 +89,6 @@ jobs:
         # 自动根据 tag 范围内的 commit 生成 release notes
         generate_release_notes: true
         files: |
-          output/gensokyo-*
+          output/release/*
         draft: false
         prerelease: false
