@@ -59,6 +59,9 @@
 >   - "SubscribeMessageStatusEventHandler" # 订阅消息授权状态变更
 > allow_proactive_msg: true           # 允许主动消息
 > require_mention: false              # false=全量响应, true=仅@响应
+> downtime_message_enabled: true      # 维护通知总开关: false=WS全部掉线时不回复维护文案
+> downtime_cooldown: 10               # 维护回复冷却(分钟): 群/频道一对多,同一用户冷却期内最多回一次; 0=不冷却; 私聊/C2C不受影响
+> downtime_message: ""                # 维护文案, 留空=不发送
 > ```
 >
 > ### 修复
@@ -67,6 +70,15 @@
 > - **群消息 @ 转文字**：官方 API 无可用真 @ 方案（`<qqbot-at-user id=.../>` 实测显示原文），出站 at 段自动转 `@昵称` 文本（昵称缓存优先；昵称未知时移除 at，见新增能力 5）
 > - **入站 @ 转 CQ at**：官方群消息里的 @ 是 `<@openid>` 内嵌标签（旧正则只匹配 `<@!数字>`），现已转成 `[CQ:at,qq=xxx]` 体现在 raw_message/message——xxx 与 gsk 中该成员的 user_id 一致，下游插件可用它指定人（如"@某人 绑定白名单"）
 > - **入站表情转 CQ face**：官方群消息里的表情是 `<faceType=1,faceId="264",ext="...">` 内嵌标记，现已转成 `[CQ:face,id=264]`（raw_message）与 `{type:"face",data:{id:"264"}}`（array 段），与 LLOneBot 等实现行为一致；**不管 faceType 是几（系统表情/动态表情/贴纸）一律按 faceId 转**（此前 faceType≠1 会返回空导致整条消息被误判为黑白名单拦截丢弃）
+> - **维护通知（`downtime_message` 系列）行为修复/增强**（WS 全部掉线时的兜底回复，改动见 `Processor/Processor.go` 的 `BroadcastMessageToAll`）：① 未配置 `downtime_message` 时不再发送空消息；② 群聊@消息/频道@消息为**一对多**场景，按「群/频道+用户」冷却（时长由 **`downtime_cooldown`** 配置，分钟，`0`=不冷却），同一用户冷却期内只回一次（WS 掉线不再"收到什么回什么"刷屏）；③ **群全量消息（未@bot）与频道不at消息不再触发维护回复**；④ 私聊/C2C/频道私信为 **1 对 1** 场景，**每条都回**，不受冷却限制；⑤ 新增 **`downtime_message_enabled`** 总开关（`false`=完全不回复）；（修改由 GitHub 用户 [DanielToyama](https://github.com/DanielToyama) 完成，遵循上游 GPLv3）
+>
+> ### 修改记录（GPLv3）
+> - **2026-08-18**（DanielToyama）：维护通知（`downtime_message` 系列）行为调整 + 新增配置项
+>   - 修改文件：`Processor/Processor.go`、`Processor/ProcessGroupMessage.go`、`Processor/ProcessGuildNormalMessage.go`、`structs/structs.go`、`config/config.go`、`template/config_template.go`、根目录 `config.yml`、`gensokyo-config-gen.html`、`readme.md`
+>   - 变更内容：见上方「修复」维护通知条目；新增 `downtime_message_enabled`（总开关）与 `downtime_cooldown`（冷却分钟）两个配置项，根目录 `config.yml` 已同步补齐，可视化配置工具 `gensokyo-config-gen.html` 新增「⑥ 维护通知」卡片
+> - **2026-08-18**（DanielToyama）：发布物压缩方式与 CI 对齐（workflow 写法未改动）
+>   - 本地 `gensokyo.exe` 改用与 `.github/workflows/cross_compile.yml` 相同的压缩方式：`-s -w` 构建后 `upx --best`，32,862,208 B → 9,634,304 B（29.3%，与原 workflow Release 产物体积一致）
+> - **2026-08-17**（DanielToyama）：fork 建立：群全量消息接收、主动消息、`require_mention`、群管理接口、SparkBridge 互通适配（详见上方新增能力/修复，所有上游 LICENSE/copyright 声明保留）
 >
 > ### 方案优势（对比普通QQ小号挂机方案）
 > - **官方机器人接入**：机器人是官方开放平台注册的应用，**无需普通 QQ 小号挂机**（不需要手机/电脑保持 QQ 在线、不会被挤下线）

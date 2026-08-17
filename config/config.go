@@ -2328,6 +2328,26 @@ func GetDowntimeMessage() string {
 	return ""
 }
 
+// 获取DowntimeMessageEnabled (维护通知总开关)
+func GetDowntimeMessageEnabled() bool {
+	mu.RLock()
+	defer mu.RUnlock()
+	if instance != nil {
+		return instance.Settings.DowntimeMessageEnabled
+	}
+	return true
+}
+
+// 获取DowntimeCooldown (维护回复冷却时间, 单位分钟; 0=不冷却)
+func GetDowntimeCooldown() int {
+	mu.RLock()
+	defer mu.RUnlock()
+	if instance != nil {
+		return instance.Settings.DowntimeCooldown
+	}
+	return 10
+}
+
 // 获取GetAutoLink的值
 func GetAutoLink() bool {
 	mu.RLock()

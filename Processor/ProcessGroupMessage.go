@@ -21,6 +21,13 @@ import (
 	"github.com/tencent-connect/botgo/websocket/client"
 )
 
+// [DanielToyama] 检测群消息内容中是否@了机器人
+// GROUP_MESSAGE_CREATE 全量事件通过 content 中的 mention 标记判断; GROUP_AT_MESSAGE_CREATE 事件本身即代表被@,无需检测
+func isBotMentioned(appID uint64, content string) bool {
+	appidStr := strconv.FormatUint(appID, 10)
+	return strings.Contains(content, "<@!"+appidStr+">") || strings.Contains(content, "<@"+appidStr+">")
+}
+
 // ProcessGroupMessage 处理群组消息
 // 参数用底层类型 *dto.Message，兼容 WSGroupATMessageData(@) 与 WSGroupMessageData(全量) 两种事件
 // isAtEvent=true 表示来自 GROUP_AT_MESSAGE_CREATE(@事件，本身即代表被@，无需require_mention检测)
@@ -52,10 +59,7 @@ func (p *Processors) ProcessGroupMessage(data *dto.Message, isAtEvent ...bool) e
 	// [新增] require_mention 开关: 开启时仅处理 @bot 的群消息
 	// 仅对全量事件(非isAtEvent)生效; @事件本身即代表被@, 无需检测
 	if config.GetRequireMention() && !(len(isAtEvent) > 0 && isAtEvent[0]) {
-		appidStr := strconv.FormatUint(p.Settings.AppID, 10)
-		mentionMark1 := "<@!" + appidStr + ">"
-		mentionMark2 := "<@" + appidStr + ">"
-		if !strings.Contains(data.Content, mentionMark1) && !strings.Contains(data.Content, mentionMark2) {
+		if !isBotMentioned(p.Settings.AppID, data.Content) {
 			mylog.Printf("[require_mention] 未@机器人, 跳过消息: %s", data.Content)
 			return nil
 		}
@@ -381,8 +385,13 @@ func (p *Processors) ProcessGroupMessage(data *dto.Message, isAtEvent ...bool) e
 
 	// 如果不是性能模式
 	if !GetDisableErrorChan {
+		// [DanielToyama] 群全量消息且未@机器人时,给维护回复打跳过标记(WS掉线时不再"收到什么回什么")
+		skipDowntime := false
+		if !(len(isAtEvent) > 0 && isAtEvent[0]) && !isBotMentioned(p.Settings.AppID, data.Content) {
+			skipDowntime = true
+		}
 		//上报信息到onebotv11应用端(正反ws) 并等待返回
-		go p.BroadcastMessageToAll(groupMsgMap, p.Apiv2, atData)
+		go p.BroadcastMessageToAll(groupMsgMap, p.Apiv2, atData, skipDowntime)
 	} else {
 		// FAF式
 		go p.BroadcastMessageToAllFAF(groupMsgMap, p.Apiv2, atData)

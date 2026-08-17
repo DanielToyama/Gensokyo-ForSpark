@@ -1,6 +1,9 @@
 // 处理收到的信息事件
 package Processor
 
+// Modified by DanielToyama on 2026-08-17 (Gensokyo-ForSpark fork)
+// 频道不at消息(CreateMessageHandler/私域)本就不要求响应,WS掉线时不再触发维护回复
+
 import (
 	"fmt"
 	"log"
@@ -132,7 +135,7 @@ func (p *Processors) ProcessGuildNormalMessage(data *dto.WSMessageData) error {
 		msgMap := structToMap(onebotMsg)
 
 		//上报信息到onebotv11应用端(正反ws)
-		go p.BroadcastMessageToAll(msgMap, p.Apiv2, data)
+		go p.BroadcastMessageToAll(msgMap, p.Apiv2, data, true) // [DanielToyama] 频道不at消息不触发维护回复
 	} else {
 		// GlobalChannelToGroup为true时的处理逻辑
 		//将频道转化为一个群
@@ -315,7 +318,7 @@ func (p *Processors) ProcessGuildNormalMessage(data *dto.WSMessageData) error {
 		groupMsgMap := structToMap(groupMsg)
 
 		//上报信息到onebotv11应用端(正反ws)
-		go p.BroadcastMessageToAll(groupMsgMap, p.Apiv2, data)
+		go p.BroadcastMessageToAll(groupMsgMap, p.Apiv2, data, true) // [DanielToyama] 频道不at消息不触发维护回复
 	}
 
 	return nil

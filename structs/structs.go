@@ -110,16 +110,18 @@ type Settings struct {
 	AutoWithdrawTime    int                  `yaml:"auto_withdraw_time"`
 	VisualPrefixsBypass []string             `yaml:"visual_prefixs_bypass"`
 	//开发增强类
-	DevlopAcDir     string `yaml:"develop_access_token_dir"`
-	DevBotid        string `yaml:"develop_bot_id"`
-	SandBoxMode     bool   `yaml:"sandbox_mode"`
-	DevMessgeID     bool   `yaml:"dev_message_id"`
-	SendError       bool   `yaml:"send_error"`
-	SaveError       bool   `yaml:"save_error"`
-	DowntimeMessage string `yaml:"downtime_message"`
-	MemoryMsgid     bool   `yaml:"memory_msgid"`
-	ThreadsRetMsg   bool   `yaml:"threads_ret_msg"`
-	NoRetMsg        bool   `yaml:"no_ret_msg"`
+	DevlopAcDir            string `yaml:"develop_access_token_dir"`
+	DevBotid               string `yaml:"develop_bot_id"`
+	SandBoxMode            bool   `yaml:"sandbox_mode"`
+	DevMessgeID            bool   `yaml:"dev_message_id"`
+	SendError              bool   `yaml:"send_error"`
+	SaveError              bool   `yaml:"save_error"`
+	DowntimeMessage        string `yaml:"downtime_message"`
+	DowntimeMessageEnabled bool   `yaml:"downtime_message_enabled"` // [新增] 维护通知总开关: false=WS全部掉线时不回复维护文案
+	DowntimeCooldown       int    `yaml:"downtime_cooldown"`        // [新增] 维护回复冷却(分钟): 群/频道一对多场景同一用户冷却期内最多回一次, 0=不冷却; 私聊/C2C不受影响
+	MemoryMsgid            bool   `yaml:"memory_msgid"`
+	ThreadsRetMsg          bool   `yaml:"threads_ret_msg"`
+	NoRetMsg               bool   `yaml:"no_ret_msg"`
 	//增长营销类
 	SelfIntroduce []string `yaml:"self_introduce"`
 	//api修改

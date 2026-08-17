@@ -188,6 +188,26 @@ h1 { font-size: 20px; font-weight: 600; color: #1e293b; margin-bottom: 6px; }
   </div>
 </div>
 
+<div class="card">
+  <h2>⑥ 维护通知（WS 全部掉线时的兜底回复）</h2>
+  <div style="font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:10px 14px;margin-bottom:14px">⚠️ 当 Gensokyo 到应用端的 WS 连接全部失败时，收到消息会通过官方 API 回一条"维护中"文案。群聊/频道是<b>一对多</b>场景，已内置冷却防刷屏；私聊/C2C 是 <b>1 对 1</b>，每条都回。</div>
+  <div class="field">
+    <label>维护通知总开关 (downtime_message_enabled)</label>
+    <div class="radio-group">
+      <label class="radio-item"><input type="radio" name="downtime_message_enabled" value="true" checked> 开启（WS 全部掉线时按规则回复维护文案）</label>
+      <label class="radio-item"><input type="radio" name="downtime_message_enabled" value="false"> 关闭（完全不回复）</label>
+    </div>
+  </div>
+  <div class="field">
+    <label>冷却时间（分钟）(downtime_cooldown) <span class="hint">群聊@/频道@ 同一用户冷却期内最多回一次；0=不冷却；私聊/C2C 不受影响</span></label>
+    <input type="number" id="downtime_cooldown" value="10" min="0">
+  </div>
+  <div class="field">
+    <label>维护文案 (downtime_message) <span class="hint">留空=不发送（等同于关闭通知）</span></label>
+    <input type="text" id="downtime_message" placeholder="例如: 我正在维护中~请不要担心,维护结束就回来~维护时间:(1小时)">
+  </div>
+</div>
+
 <div class="actions">
   <button class="btn btn-primary" onclick="generate()">生成 config.yml</button>
   <button class="btn btn-secondary" onclick="downloadConfig()" id="btn_download" style="display:none">下载文件</button>
@@ -261,6 +281,9 @@ function generate() {
     : '    - "GroupATMessageEventHandler"';
 
   const require_mention = document.querySelector('input[name="require_mention"]:checked').value;
+  const downtime_message_enabled = document.querySelector('input[name="downtime_message_enabled"]:checked').value;
+  const downtime_cooldown = document.getElementById('downtime_cooldown').value.trim() || '10';
+  const downtime_message = document.getElementById('downtime_message').value.trim();
   const allow_proactive_msg = document.querySelector('input[name="allow_proactive_msg"]:checked').value;
   const log_level = document.querySelector('input[name="log_level"]:checked').value;
   const at_add_group = document.querySelector('input[name="at_add_group"]:checked').value;
@@ -372,6 +395,11 @@ ${intentLines}
   send_delay : 300
   enableChangeWord : false
   defaultChangeWord : "*"
+
+  #维护通知 (WS全部掉线时的兜底回复; 群/频道一对多按冷却限流, 私聊/C2C每条都回)
+  downtime_message_enabled : ${downtime_message_enabled}
+  downtime_cooldown : ${downtime_cooldown}
+  downtime_message : "${downtime_message}"
 
   #发图相关
   oss_type : 0

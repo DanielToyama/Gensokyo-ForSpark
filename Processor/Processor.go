@@ -276,8 +276,35 @@ func (p *Processors) BroadcastMessageToAllFAF(message map[string]interface{}, ap
 	return nil
 }
 
+// [DanielToyama] 维护回复冷却(一对多场景防刷屏): 同一群/频道 + 同一用户 在冷却期内最多回一次维护文案
+var downtimeCooldownMux sync.Mutex
+var downtimeCooldownMap = make(map[string]time.Time)
+
+// isDowntimeCooldownHit 返回该key是否处于维护回复冷却期内; 未在冷却期内则记录本次回复时间
+// 冷却时长取配置 downtime_cooldown(分钟), 0或负值表示不冷却
+func isDowntimeCooldownHit(key string) bool {
+	cooldownMinutes := config.GetDowntimeCooldown()
+	if cooldownMinutes <= 0 {
+		return false
+	}
+	cooldownDuration := time.Duration(cooldownMinutes) * time.Minute
+	downtimeCooldownMux.Lock()
+	defer downtimeCooldownMux.Unlock()
+	// 粗粒度防无限增长: 条目过多时整体重置
+	if len(downtimeCooldownMap) > 10000 {
+		downtimeCooldownMap = make(map[string]time.Time)
+	}
+	if t, ok := downtimeCooldownMap[key]; ok && time.Since(t) < cooldownDuration {
+		return true
+	}
+	downtimeCooldownMap[key] = time.Now()
+	return false
+}
+
 // 方便快捷的发信息函数
-func (p *Processors) BroadcastMessageToAll(message map[string]interface{}, api openapi.MessageAPI, data interface{}) error {
+// [DanielToyama] 新增可选参数 skipDowntimeReply: 为true时,即使所有WS发送失败也不回复维护文案
+// (用于群全量消息/频道不at消息等本就不要求响应的消息,避免WS掉线时"收到什么回什么"刷屏)
+func (p *Processors) BroadcastMessageToAll(message map[string]interface{}, api openapi.MessageAPI, data interface{}, skipDowntimeReply ...bool) error {
 	var wg sync.WaitGroup
 	errorCh := make(chan string, len(p.Wsclient)+len(p.WsServerClients))
 	defer close(errorCh)
@@ -315,53 +342,72 @@ func (p *Processors) BroadcastMessageToAll(message map[string]interface{}, api o
 	}
 
 	// 仅对连接正反ws的bot应用这个判断
-	if !p.Settings.HttpOnlyBot {
+	// [DanielToyama] 维护通知总开关 downtime_message_enabled=false 时完全不回复维护文案
+	// [DanielToyama] 调用方标记 skipDowntimeReply 时(群全量未@/频道不at),即使全部发送失败也不回复维护文案
+	if config.GetDowntimeMessageEnabled() && !p.Settings.HttpOnlyBot && !(len(skipDowntimeReply) > 0 && skipDowntimeReply[0]) {
 		// 检查是否所有尝试都失败了
 		if failed == len(p.Wsclient)+len(p.WsServerClients) {
 			// 处理全部失败的情况
 			fmt.Println("All ws event sending attempts failed.")
 			downtimemessgae := config.GetDowntimeMessage()
-			switch v := data.(type) {
-			case *dto.WSGroupATMessageData:
-				msgtocreate := &dto.MessageToCreate{
-					Content: downtimemessgae,
-					MsgID:   v.ID,
-					MsgSeq:  1,
-					MsgType: 0, // 默认文本类型
+			// [DanielToyama] 未配置维护文案时不发送,避免发出空消息
+			if downtimemessgae != "" {
+				switch v := data.(type) {
+				case *dto.WSGroupATMessageData:
+					// [DanielToyama] 群聊一对多: 同一群+同一用户冷却期内只回一次维护文案
+					if isDowntimeCooldownHit(v.GroupID + "_" + v.Author.ID) {
+						break
+					}
+					msgtocreate := &dto.MessageToCreate{
+						Content: downtimemessgae,
+						MsgID:   v.ID,
+						MsgSeq:  1,
+						MsgType: 0, // 默认文本类型
+					}
+					api.PostGroupMessage(context.Background(), v.GroupID, msgtocreate)
+				case *dto.WSATMessageData:
+					// [DanielToyama] 频道@消息一对多: 同一频道+同一用户冷却期内只回一次维护文案
+					if isDowntimeCooldownHit(v.ChannelID + "_" + v.Author.ID) {
+						break
+					}
+					msgtocreate := &dto.MessageToCreate{
+						Content: downtimemessgae,
+						MsgID:   v.ID,
+						MsgSeq:  1,
+						MsgType: 0, // 默认文本类型
+					}
+					api.PostMessage(context.Background(), v.ChannelID, msgtocreate)
+				case *dto.WSMessageData:
+					// [DanielToyama] 频道不at消息(私域 CreateMessageHandler)本应在上游跳过,此处兜底加冷却
+					if isDowntimeCooldownHit(v.ChannelID + "_" + v.Author.ID) {
+						break
+					}
+					msgtocreate := &dto.MessageToCreate{
+						Content: downtimemessgae,
+						MsgID:   v.ID,
+						MsgSeq:  1,
+						MsgType: 0, // 默认文本类型
+					}
+					api.PostMessage(context.Background(), v.ChannelID, msgtocreate)
+				case *dto.WSDirectMessageData:
+					// [DanielToyama] 频道私信为1对1场景,不冷却,每条都回
+					msgtocreate := &dto.MessageToCreate{
+						Content: downtimemessgae,
+						MsgID:   v.ID,
+						MsgSeq:  1,
+						MsgType: 0, // 默认文本类型
+					}
+					api.PostMessage(context.Background(), v.GuildID, msgtocreate)
+				case *dto.WSC2CMessageData:
+					// [DanielToyama] C2C为1对1场景,不冷却,每条都回
+					msgtocreate := &dto.MessageToCreate{
+						Content: downtimemessgae,
+						MsgID:   v.ID,
+						MsgSeq:  1,
+						MsgType: 0, // 默认文本类型
+					}
+					api.PostC2CMessage(context.Background(), v.Author.ID, msgtocreate)
 				}
-				api.PostGroupMessage(context.Background(), v.GroupID, msgtocreate)
-			case *dto.WSATMessageData:
-				msgtocreate := &dto.MessageToCreate{
-					Content: downtimemessgae,
-					MsgID:   v.ID,
-					MsgSeq:  1,
-					MsgType: 0, // 默认文本类型
-				}
-				api.PostMessage(context.Background(), v.ChannelID, msgtocreate)
-			case *dto.WSMessageData:
-				msgtocreate := &dto.MessageToCreate{
-					Content: downtimemessgae,
-					MsgID:   v.ID,
-					MsgSeq:  1,
-					MsgType: 0, // 默认文本类型
-				}
-				api.PostMessage(context.Background(), v.ChannelID, msgtocreate)
-			case *dto.WSDirectMessageData:
-				msgtocreate := &dto.MessageToCreate{
-					Content: downtimemessgae,
-					MsgID:   v.ID,
-					MsgSeq:  1,
-					MsgType: 0, // 默认文本类型
-				}
-				api.PostMessage(context.Background(), v.GuildID, msgtocreate)
-			case *dto.WSC2CMessageData:
-				msgtocreate := &dto.MessageToCreate{
-					Content: downtimemessgae,
-					MsgID:   v.ID,
-					MsgSeq:  1,
-					MsgType: 0, // 默认文本类型
-				}
-				api.PostC2CMessage(context.Background(), v.Author.ID, msgtocreate)
 			}
 		}
 	}
