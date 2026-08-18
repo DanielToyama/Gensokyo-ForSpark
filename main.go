@@ -34,6 +34,7 @@ import (
 	"github.com/hoshinonyaruko/gensokyo/httpapi"
 	"github.com/hoshinonyaruko/gensokyo/idmap"
 	"github.com/hoshinonyaruko/gensokyo/mylog"
+	"github.com/hoshinonyaruko/gensokyo/msgmap"
 	"github.com/hoshinonyaruko/gensokyo/server"
 	"github.com/hoshinonyaruko/gensokyo/sys"
 	"github.com/hoshinonyaruko/gensokyo/template"
@@ -214,10 +215,13 @@ func main() {
 			idmap.InitializeDB()
 			//创建botstats数据库
 			botstats.InitializeDB()
+			//[DanielToyama] 创建msgmap数据库 (fakeReply假回复的消息id→发送者记录)
+			msgmap.InitializeDB()
 
 			//关闭时候释放数据库
 			defer idmap.CloseDB()
 			defer botstats.CloseDB()
+			defer msgmap.CloseDB()
 
 			if *delids {
 				mylog.Printf("开始删除ids\n")
@@ -628,6 +632,7 @@ func main() {
 	// 关闭BoltDB数据库
 	url.CloseDB()
 	idmap.CloseDB()
+	msgmap.CloseDB()
 
 	// 在关闭WebSocket客户端之前
 	for _, wsClient := range p.WsServerClients {

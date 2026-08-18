@@ -119,6 +119,7 @@ type Settings struct {
 	DowntimeMessage        string `yaml:"downtime_message"`
 	DowntimeMessageEnabled bool   `yaml:"downtime_message_enabled"` // [新增] 维护通知总开关: false=WS全部掉线时不回复维护文案
 	DowntimeCooldown       int    `yaml:"downtime_cooldown"`        // [新增] 维护回复冷却(分钟): 群/频道一对多场景同一用户冷却期内最多回一次, 0=不冷却; 私聊/C2C不受影响
+	FakeReply              bool   `yaml:"fake_reply"`               // [新增] fakeReply假回复开关: true=应用端发send_*_msg携带reply引用段时,把回复文本伪造为"回复 @昵称\n————\n原内容"(官方协议不支持真实引用); false=忽略reply段
 	MemoryMsgid            bool   `yaml:"memory_msgid"`
 	ThreadsRetMsg          bool   `yaml:"threads_ret_msg"`
 	NoRetMsg               bool   `yaml:"no_ret_msg"`

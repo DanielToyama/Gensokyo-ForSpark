@@ -44,6 +44,11 @@
 >    - **`get_stranger_info` 已实现**：昵称取官方事件缓存的 `username`（加群申请等事件携带）；`sex/age` 官方不提供返回空/0；**`qqLevel` 官方无 QQ 等级数据，固定 9999** 放行等级门槛（防插件按 0 级误拒）
 >    - **任何 action 都有合法 JSON 回应**：未注册/出错的 action 回 `{"status":"failed","retcode":1400,"data":{"message":...},"echo":...}`，不再沉默（避免 SparkBridge 等对端等待超时拿 undefined 后 JSON5 解析崩溃）
 >    - **`set_group_add_request` 支持只传 flag**：SparkBridge groupRequest 插件审批只传 `flag(join_request_id)`/`approve`/`reason` 时，从事件缓存（`join_request_id → 群/成员 openid`）反查后调官方审批接口；`approve=false` 即拒绝（不再要求 refuse 字段）
+> 6. **FakeReply 假回复**（OneBot v11 `reply` 引用段的文本伪造实现）
+>    - 官方协议不支持真实引用（参考 OneBot 11 规范 `send_group_msg` 的 `{"type":"reply","data":{"id":...}}` 引用段），但引用能让人辨别"在回复谁"
+>    - Gensokyo 把**收到的每条群/私聊/频道消息**按 `message_id` 持久化发送者昵称与原文到本地 **`msgmap.db`**（bbolt，重复键覆盖，保留 7 天自动清理）
+>    - 应用端（如 SparkBridge）发送带 `reply` 引用段的消息时，自动文本伪造为 `回复 @昵称` + `————` + 原消息内容，再接本条消息正文；支持与 text/at/image 等段**混合发送**；查不到记录时跳过伪造、按普通消息发送
+>    - 配置开关 **`fake_reply`**（默认 `true`）：`false` = 忽略 reply 段
 
 >
 > ### 配置说明
@@ -62,6 +67,7 @@
 > downtime_message_enabled: true      # 维护通知总开关: false=WS全部掉线时不回复维护文案
 > downtime_cooldown: 10               # 维护回复冷却(分钟): 群/频道一对多,同一用户冷却期内最多回一次; 0=不冷却; 私聊/C2C不受影响
 > downtime_message: ""                # 维护文案, 留空=不发送
+> fake_reply: true                    # FakeReply假回复开关: true=应用端发reply引用段时文本伪造"回复 @昵称\n————\n原内容"; false=忽略reply段
 > ```
 >
 > ### 修复
@@ -79,6 +85,9 @@
 > - **2026-08-18**（DanielToyama）：维护通知（`downtime_message` 系列）行为调整 + 新增配置项
 >   - 修改文件：`Processor/Processor.go`、`Processor/ProcessGroupMessage.go`、`Processor/ProcessGuildNormalMessage.go`、`structs/structs.go`、`config/config.go`、`template/config_template.go`、根目录 `config.yml`、`gensokyo-config-gen.html`、`readme.md`
 >   - 变更内容：见上方「修复」维护通知条目；新增 `downtime_message_enabled`（总开关）与 `downtime_cooldown`（冷却分钟）两个配置项，根目录 `config.yml` 已同步补齐，可视化配置工具 `gensokyo-config-gen.html` 新增「⑥ 维护通知」卡片
+> - **2026-08-18**（DanielToyama）：新增 FakeReply 假回复（OneBot v11 `reply` 引用段的文本伪造）
+>   - 修改文件：新增 `msgmap/msgmap.go`（message_id→发送者 持久化，bbolt `msgmap.db`）；`main.go`（初始化/关闭）、`Processor/ProcessGroupMessage.go`、`Processor/ProcessC2CMessage.go`、`Processor/ProcessGuildATMessage.go`（收到消息时记录）、`handlers/message_parser.go`（`reply` 段解析与伪造渲染）、`structs/structs.go`、`config/config.go`、`template/config_template.go`、根目录 `config.yml`、`gensokyo-config-gen.html`（新增「⑦ 假回复」卡片）、`readme.md`
+>   - 变更内容：见上方「新增能力 6」；新增配置项 `fake_reply`（默认 `true`）；伪造格式 `回复 @昵称\n————\n原内容`，原内容优先取 reply 段的 `data.text`，否则取 msgmap 持久化的原文
 > - **2026-08-18**（DanielToyama）：发布物压缩方式与 CI 对齐（workflow 写法未改动）
 >   - 本地 `gensokyo.exe` 改用与 `.github/workflows/cross_compile.yml` 相同的压缩方式：`-s -w` 构建后 `upx --best`，32,862,208 B → 9,634,304 B（29.3%，与原 workflow Release 产物体积一致）
 > - **2026-08-18**（DanielToyama）：修复 Release workflow 产物丢失（`.github/workflows/cross_compile.yml`）

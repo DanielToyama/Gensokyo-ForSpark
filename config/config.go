@@ -2348,6 +2348,16 @@ func GetDowntimeCooldown() int {
 	return 10
 }
 
+// 获取FakeReply (fakeReply假回复开关; 官方协议不支持reply引用段, 开启后文本伪造"回复 @昵称\n————\n原内容")
+func GetFakeReply() bool {
+	mu.RLock()
+	defer mu.RUnlock()
+	if instance != nil {
+		return instance.Settings.FakeReply
+	}
+	return true
+}
+
 // 获取GetAutoLink的值
 func GetAutoLink() bool {
 	mu.RLock()

@@ -12,6 +12,7 @@ import (
 	"github.com/hoshinonyaruko/gensokyo/handlers"
 	"github.com/hoshinonyaruko/gensokyo/idmap"
 	"github.com/hoshinonyaruko/gensokyo/mylog"
+	"github.com/hoshinonyaruko/gensokyo/msgmap"
 
 	"github.com/tencent-connect/botgo/dto"
 	"github.com/tencent-connect/botgo/websocket/client"
@@ -87,6 +88,18 @@ func (p *Processors) ProcessGuildATMessage(data *dto.WSATMessageData) error {
 			Time:    t.Unix(),
 			Avatar:  data.Author.Avatar,
 		}
+		// [DanielToyama] fakeReply: 持久化本条频道消息(message_id→发送者), 供应用端reply引用段伪造回复
+		guildNick := data.Member.Nick
+		if guildNick == "" {
+			guildNick = data.Author.Username
+		}
+		msgmap.RecordMessage([]string{data.ID}, msgmap.MsgInfo{
+			UserID:   strconv.FormatInt(userid64, 10),
+			Nickname: guildNick,
+			GroupID:  data.ChannelID,
+			MsgType:  "guild",
+			Content:  messageText,
+		})
 		// 根据条件判断是否添加Echo字段
 		if config.GetTwoWayEcho() {
 			onebotMsg.Echo = echostr
@@ -209,6 +222,14 @@ func (p *Processors) ProcessGuildATMessage(data *dto.WSATMessageData) error {
 			}
 		}
 		messageID := int(messageID64)
+		// [DanielToyama] fakeReply: 持久化本条频道消息(message_id→发送者), 频道转群模式
+		msgmap.RecordMessage([]string{data.ID, strconv.Itoa(messageID)}, msgmap.MsgInfo{
+			UserID:   strconv.FormatInt(userid64, 10),
+			Nickname: data.Member.Nick,
+			GroupID:  strconv.FormatInt(ChannelID64, 10),
+			MsgType:  "guild",
+			Content:  messageText,
+		})
 		// 如果在Array模式下, 则处理Message为Segment格式
 		var segmentedMessages interface{} = messageText
 		if config.GetArrayValue() {

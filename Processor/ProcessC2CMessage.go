@@ -15,6 +15,7 @@ import (
 	"github.com/hoshinonyaruko/gensokyo/handlers"
 	"github.com/hoshinonyaruko/gensokyo/idmap"
 	"github.com/hoshinonyaruko/gensokyo/mylog"
+	"github.com/hoshinonyaruko/gensokyo/msgmap"
 	"github.com/hoshinonyaruko/gensokyo/structs"
 	"github.com/tencent-connect/botgo/dto"
 	"github.com/tencent-connect/botgo/websocket/client"
@@ -102,6 +103,14 @@ func (p *Processors) ProcessC2CMessage(data *dto.WSC2CMessageData) error {
 		}
 		//框架内指令
 		p.HandleFrameworkCommand(messageText, data, "group_private")
+		// [DanielToyama] fakeReply: 持久化本条私聊消息(message_id→发送者), 供应用端reply引用段伪造回复
+		msgmap.RecordMessage([]string{data.ID, strconv.Itoa(messageID)}, msgmap.MsgInfo{
+			UserID:   strconv.FormatInt(userid64, 10),
+			Nickname: data.Author.Username,
+			GroupID:  strconv.FormatInt(userid64, 10),
+			MsgType:  "group_private",
+			Content:  messageText,
+		})
 		// 如果在Array模式下, 则处理Message为Segment格式
 		var segmentedMessages interface{} = messageText
 		if config.GetArrayValue() {
@@ -237,6 +246,14 @@ func (p *Processors) ProcessC2CMessage(data *dto.WSC2CMessageData) error {
 				}
 			}
 			messageID := int(messageID64)
+			// [DanielToyama] fakeReply: 持久化本条消息(message_id→发送者), 私聊转群模式
+			msgmap.RecordMessage([]string{data.ID, strconv.Itoa(messageID)}, msgmap.MsgInfo{
+				UserID:   strconv.FormatInt(userid64, 10),
+				Nickname: data.Author.Username,
+				GroupID:  strconv.FormatInt(userid64, 10),
+				MsgType:  "group_private",
+				Content:  messageText,
+			})
 			//todo 判断array模式 然后对Message处理成array格式
 			IsBindedUserId := idmap.CheckValue(data.Author.ID, userid64)
 
@@ -386,6 +403,15 @@ func (p *Processors) ProcessC2CMessage(data *dto.WSC2CMessageData) error {
 					}
 				}
 			}
+
+			// [DanielToyama] fakeReply: 持久化本条消息(message_id→发送者), 私聊string模式
+			msgmap.RecordMessage([]string{data.ID}, msgmap.MsgInfo{
+				UserID:   data.Author.ID,
+				Nickname: data.Author.Username,
+				GroupID:  data.Author.ID,
+				MsgType:  "group_private",
+				Content:  messageText,
+			})
 
 			groupMsg := OnebotGroupMessageS{
 				RawMessage:  messageText,

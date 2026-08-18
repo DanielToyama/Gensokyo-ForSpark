@@ -27,6 +27,7 @@ import (
 	"github.com/hoshinonyaruko/gensokyo/idmap"
 	"github.com/hoshinonyaruko/gensokyo/images"
 	"github.com/hoshinonyaruko/gensokyo/mylog"
+	"github.com/hoshinonyaruko/gensokyo/msgmap"
 	"github.com/hoshinonyaruko/gensokyo/structs"
 	"github.com/hoshinonyaruko/gensokyo/url"
 	"github.com/skip2/go-qrcode"
@@ -547,6 +548,65 @@ func SendGuildPrivateResponse(client callapi.Client, err error, message *callapi
 	return string(jsonResponse), nil
 }
 
+// [DanielToyama] buildFakeReplyPrefix: fakeReply 假回复的文本前缀
+// 应用端发 OneBot v11 引用段 {"type":"reply","data":{"id":被回复消息id, "text":可选原文}}
+// 时,官方协议无法真实引用,查 msgmap(消息id→发送者昵称/原文持久化)后伪造文本:
+//
+//	回复 @昵称
+//	————
+//	原消息内容
+//
+// 原内容优先取引用段携带的 data.text, 其次取 msgmap 持久化的原文; 查不到记录时跳过伪造(返回"")。
+func buildFakeReplyPrefix(data interface{}) string {
+	dataMap, ok := data.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	idStr := ""
+	if idVal, exists := dataMap["id"]; exists {
+		switch v := idVal.(type) {
+		case string:
+			idStr = v
+		case float64:
+			idStr = strconv.FormatInt(int64(v), 10)
+		case int64:
+			idStr = strconv.FormatInt(v, 10)
+		case int:
+			idStr = strconv.Itoa(v)
+		case json.Number:
+			idStr = v.String()
+		default:
+			idStr = fmt.Sprint(v)
+		}
+	}
+	if idStr == "" {
+		return ""
+	}
+	info, found := msgmap.LookupMessage(idStr)
+	if !found {
+		mylog.Printf("fakeReply: 未找到消息id[%s]的发送者记录, 跳过伪造回复", idStr)
+		return ""
+	}
+	name := info.Nickname
+	if name == "" {
+		name = info.UserID
+	}
+	if name == "" {
+		name = "未知用户"
+	}
+	quoted := ""
+	if t, isStr := dataMap["text"].(string); isStr && strings.TrimSpace(t) != "" {
+		quoted = t
+	} else if info.Content != "" {
+		quoted = info.Content
+	}
+	prefix := "回复 @" + name
+	if quoted != "" {
+		prefix += "\n————\n" + quoted
+	}
+	return prefix + "\n"
+}
+
 // 信息处理函数
 func parseMessageContent(paramsMessage callapi.ParamsContent, message callapi.ActionMessage, client callapi.Client, api openapi.OpenAPI, apiv2 openapi.OpenAPI) (string, map[string][]string) {
 	messageText := ""
@@ -570,6 +630,8 @@ func parseMessageContent(paramsMessage callapi.ParamsContent, message callapi.Ac
 		}
 	case []interface{}:
 		mylog.Printf("params.message is a slice (segment_type_koishi)\n")
+		// [DanielToyama] fakeReply: reply 引用段生成的文本前缀, 最后拼到消息最前
+		fakeReplyPrefix := ""
 		for _, segment := range message {
 			segmentMap, ok := segment.(map[string]interface{})
 			if !ok {
@@ -704,10 +766,21 @@ func parseMessageContent(paramsMessage callapi.ParamsContent, message callapi.Ac
 
 			default:
 				mylog.Printf("Unhandled segment type: %s", segmentType)
+
+			case "reply":
+				// [DanielToyama] fakeReply: OneBot v11 引用段, 官方协议无法真引用, 文本伪造回复
+				if config.GetFakeReply() {
+					fakeReplyPrefix = buildFakeReplyPrefix(segmentMap["data"])
+				}
 			}
 
 			messageText += segmentContent
 
+		}
+
+		// [DanielToyama] fakeReply: 伪造前缀置顶(与真实引用的气泡置顶表现一致), 其余段(文字/at/图片等)原样拼后面
+		if fakeReplyPrefix != "" {
+			messageText = fakeReplyPrefix + messageText
 		}
 	case map[string]interface{}:
 		mylog.Printf("params.message is a map (segment_type_trss)\n")
@@ -831,6 +904,12 @@ func parseMessageContent(paramsMessage callapi.ParamsContent, message callapi.Ac
 
 		default:
 			mylog.Printf("Unhandled message type: %s", messageType)
+
+		case "reply":
+			// [DanielToyama] fakeReply: 整条消息即为 reply 引用段(单段)时的处理, 仅生成伪造前缀作为正文
+			if config.GetFakeReply() {
+				messageText = buildFakeReplyPrefix(message["data"])
+			}
 		}
 
 	default:

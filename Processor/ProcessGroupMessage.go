@@ -15,6 +15,7 @@ import (
 	"github.com/hoshinonyaruko/gensokyo/handlers"
 	"github.com/hoshinonyaruko/gensokyo/idmap"
 	"github.com/hoshinonyaruko/gensokyo/mylog"
+	"github.com/hoshinonyaruko/gensokyo/msgmap"
 	"github.com/hoshinonyaruko/gensokyo/unioncache"
 
 	"github.com/tencent-connect/botgo/dto"
@@ -174,6 +175,30 @@ func (p *Processors) ProcessGroupMessage(data *dto.Message, isAtEvent ...bool) e
 			}
 		}
 		messageID = int(messageID64)
+	}
+
+	// [DanielToyama] fakeReply: 持久化本条群消息(message_id→发送者昵称/内容), 供应用端
+	// 发送reply引用段时文本伪造回复使用。键同时记录真实ID与行ID, 覆盖 string_ob11 两种模式。
+	{
+		keys := []string{data.ID}
+		if messageID != 0 {
+			keys = append(keys, strconv.Itoa(messageID))
+		}
+		var msgUserID, msgGroupID string
+		if config.GetStringOb11() {
+			msgUserID = data.Author.ID
+			msgGroupID = data.GroupID
+		} else {
+			msgUserID = strconv.FormatInt(userid64, 10)
+			msgGroupID = strconv.FormatInt(GroupID64, 10)
+		}
+		msgmap.RecordMessage(keys, msgmap.MsgInfo{
+			UserID:   msgUserID,
+			Nickname: data.Author.Username,
+			GroupID:  msgGroupID,
+			MsgType:  "group",
+			Content:  messageText,
+		})
 	}
 
 	if config.GetAutoBind() {
