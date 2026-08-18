@@ -73,6 +73,9 @@
 > - **维护通知（`downtime_message` 系列）行为修复/增强**（WS 全部掉线时的兜底回复，改动见 `Processor/Processor.go` 的 `BroadcastMessageToAll`）：① 未配置 `downtime_message` 时不再发送空消息；② 群聊@消息/频道@消息为**一对多**场景，按「群/频道+用户」冷却（时长由 **`downtime_cooldown`** 配置，分钟，`0`=不冷却），同一用户冷却期内只回一次（WS 掉线不再"收到什么回什么"刷屏）；③ **群全量消息（未@bot）与频道不at消息不再触发维护回复**；④ 私聊/C2C/频道私信为 **1 对 1** 场景，**每条都回**，不受冷却限制；⑤ 新增 **`downtime_message_enabled`** 总开关（`false`=完全不回复）；（修改由 GitHub 用户 [DanielToyama](https://github.com/DanielToyama) 完成，遵循上游 GPLv3）
 >
 > ### 修改记录（GPLv3）
+> - **2026-08-18**（DanielToyama）：`get_status` 重写为 LLOneBot 文档结构（bot 状态）
+>   - 修改文件：`handlers/get_status.go`、`botstats/botstats.go`、`readme.md`
+>   - 变更内容：响应改为 `data.{online, good, stat}` + 顶层 `wording`（对齐 LLOneBot `bot状态` 文档）；`stat` 提供真实统计 `message_received`/`message_sent`/`last_message_time`/`startup_time`（后者为新增，来自进程启动时刻），移除原 go-cqhttp 风格写死的测试数据（`packet_received: 1000` 等）；`online/good` 直接为 `true`（能收到请求即说明连接正常）
 > - **2026-08-18**（DanielToyama）：维护通知（`downtime_message` 系列）行为调整 + 新增配置项
 >   - 修改文件：`Processor/Processor.go`、`Processor/ProcessGroupMessage.go`、`Processor/ProcessGuildNormalMessage.go`、`structs/structs.go`、`config/config.go`、`template/config_template.go`、根目录 `config.yml`、`gensokyo-config-gen.html`、`readme.md`
 >   - 变更内容：见上方「修复」维护通知条目；新增 `downtime_message_enabled`（总开关）与 `downtime_cooldown`（冷却分钟）两个配置项，根目录 `config.yml` 已同步补齐，可视化配置工具 `gensokyo-config-gen.html` 新增「⑥ 维护通知」卡片

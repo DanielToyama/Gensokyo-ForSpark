@@ -1,5 +1,7 @@
 package botstats
 
+// Modified by DanielToyama on 2026-08-18 (Gensokyo-ForSpark fork)
+
 import (
 	"errors"
 	"fmt"
@@ -13,6 +15,14 @@ import (
 )
 
 var db *bbolt.DB
+
+// [DanielToyama] 进程启动时间(Unix 秒), 供 get_status 的 stat.startup_time 使用(对齐 LLOneBot 文档)
+var startupTime = time.Now().Unix()
+
+// GetStartupTime 返回进程启动时间(Unix 秒), 供 get_status 的 stat.startup_time 使用
+func GetStartupTime() int64 {
+	return startupTime
+}
 
 const (
 	bucketName = "stats"
