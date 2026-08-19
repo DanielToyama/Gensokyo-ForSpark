@@ -104,6 +104,9 @@
 > - **2026-08-19**（DanielToyama）：Release workflow UPX 安装改直连 GitHub Release 下载（apt 镜像卡死修复）
 >   - 修改文件：`.github/workflows/cross_compile.yml`、`readme.md`
 >   - 变更内容：`sudo apt-get update` 依赖 azure.archive.ubuntu.com 镜像，该镜像（微软托管 runner 专用）抽风时 apt 无限重试，整个构建卡死在 Compress with UPX 步（2026-08-19 `v2026.08.19.144851` 实测）；改为直连 `github.com/upx/upx` Release 下载 UPX 二进制（走 objects.githubusercontent.com CDN，不依赖 apt 镜像），下载失败才回退 apt（带 `Acquire::Retries=3` 重试上限，不再无限挂起）
+> - **2026-08-19**（DanielToyama）：Release workflow UPX 二进制统一用 linux amd64 版（上门修复的 win64 版 bug）
+>   - 修改文件：`.github/workflows/cross_compile.yml`、`readme.md`
+>   - 变更内容：一次修复在 `matrix.os=windows` 时下载 `upx-4.2.4-win64.zip` 并在 runner 上执行——GitHub runner 是 **Linux 环境，无法运行 Windows 的 PE 程序**，windows 目标任务直接失败；linux amd64 版 UPX **同时支持压缩 PE(.exe)与 ELF**，故所有目标统一下载 linux amd64 版 UPX 并直连 GitHub Release（不走 apt 镜像），apt 仅作兜底（带重试上限）
 > - **2026-08-18**（DanielToyama）：入群审核 comment 增强 + 空值留痕（对应用户反馈"审核内容变成了空"）
 >   - 修改文件：`Processor/ProcessGroupJoinRequest.go`、`handlers/group_mgmt_common.go`、`handlers/get_group_join_request_list.go`、`readme.md`
 >   - 变更内容：申请词 `comment` 支持**问答验证**（`verify_info.method=admin_review_qa`，官方不回填 `verify_message`，问题和回答在 `verify_info.review_qa_list`）——拼接为 `问:… 答:…` 展示；**`get_group_join_request_list` 每条申请附加 `comment` 增强字段**（原字段不变）；`comment` 最终仍为空时打印**留痕日志**（含完整 `verify_info`），下次复发即可区分"申请人没填验证消息 / 官方事件字段缺失 / 偶发丢字段"

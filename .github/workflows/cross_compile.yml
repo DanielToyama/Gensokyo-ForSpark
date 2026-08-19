@@ -47,33 +47,23 @@ jobs:
 
     - name: Compress with UPX
       run: |
-        # [DanielToyama] 修复 2026-08-19: 之前 sudo apt-get update 依赖 azure.archive.ubuntu.com 镜像,
-        # 该镜像(微软托管 runner 专用)抽风时 apt 反复重试导致整个构建卡死; 改为直连 GitHub Release
-        # 下载 UPX 二进制(走 objects.githubusercontent.com CDN, 不依赖 apt 镜像), 失败再回退 apt
-        if [ "${{ matrix.os }}" = "windows" ]; then
-          UPX_BIN=upx-4.2.4-win64/upx.exe
-          UPX_URL=https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-win64.zip
-          curl -fsSL -o /tmp/upx.zip "$UPX_URL" && (cd /tmp && unzip -o upx.zip >/dev/null)
+        # [DanielToyama] 修复 2026-08-19 (第二次): 之前 sudo apt-get update 依赖 azure.archive.ubuntu.com 镜像,
+        # 该镜像抽风时 apt 无限重试卡死构建; 一次修复下载 upx-WIN64 版在 linux runner 上跑不起来
+        # (UPX 的 win64 二进制是 Windows PE, 不能在 ubuntu runner 执行)。linux amd64 版 UPX 同时支持
+        # 压缩 PE(.exe)与 ELF, 故所有目标统一用 linux 版, 直连 GitHub Release 下载(不走 apt 镜像)。
+        UPX_URL=https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-amd64_linux.tar.xz
+        curl -fsSL -o /tmp/upx.tar.xz "$UPX_URL" || { echo "UPX 直连下载失败, 回退 apt 安装"; sudo apt-get update -o Acquire::Retries=3 && (sudo apt-get install -y upx-ucl 2>/dev/null || sudo apt-get install -y upx) && UPX_BIN=$(command -v upx) || exit 1; }
+        if ! command -v upx >/dev/null 2>&1; then
+          tar -xf /tmp/upx.tar.xz -C /tmp
+          UPX_BIN=/tmp/upx-4.2.4-amd64_linux/upx
+          chmod +x "$UPX_BIN"
         else
-          UPX_BIN=upx-4.2.4-amd64_linux/upx
-          UPX_URL=https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-amd64_linux.tar.xz
-          curl -fsSL -o /tmp/upx.tar.xz "$UPX_URL" && tar -xf /tmp/upx.tar.xz -C /tmp
+          UPX_BIN=$(command -v upx)
         fi
-        if [ -x "/tmp/$UPX_BIN" ] || [ -f "/tmp/$UPX_BIN" ]; then
-          if [ "${{ matrix.os }}" = "windows" ]; then
-            /tmp/$UPX_BIN --best output/gensokyo-${{ matrix.os }}-${{ matrix.goarch }}.exe
-          else
-            chmod +x /tmp/$UPX_BIN && /tmp/$UPX_BIN --best output/gensokyo-${{ matrix.os }}-${{ matrix.goarch }}
-          fi
+        if [ "${{ matrix.os }}" = "windows" ]; then
+          "$UPX_BIN" --best output/gensokyo-${{ matrix.os }}-${{ matrix.goarch }}.exe
         else
-          echo "UPX 直连下载失败, 回退 apt 安装"
-          sudo apt-get update -o Acquire::Retries=3
-          sudo apt-get install -y upx-ucl 2>/dev/null || sudo apt-get install -y upx
-          if [ "${{ matrix.os }}" = "windows" ]; then
-            upx --best output/gensokyo-${{ matrix.os }}-${{ matrix.goarch }}.exe
-          else
-            upx --best output/gensokyo-${{ matrix.os }}-${{ matrix.goarch }}
-          fi
+          "$UPX_BIN" --best output/gensokyo-${{ matrix.os }}-${{ matrix.goarch }}
         fi
 
     - name: Upload artifact
