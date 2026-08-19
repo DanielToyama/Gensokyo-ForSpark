@@ -47,13 +47,33 @@ jobs:
 
     - name: Compress with UPX
       run: |
-        # webui 已从 main.go 移除, 不再需要前端占位; 直接 -s -w + UPX 压到 ~9MB(与上游一致)
-        sudo apt-get update
-        sudo apt-get install -y upx-ucl 2>/dev/null || sudo apt-get install -y upx
+        # [DanielToyama] 修复 2026-08-19: 之前 sudo apt-get update 依赖 azure.archive.ubuntu.com 镜像,
+        # 该镜像(微软托管 runner 专用)抽风时 apt 反复重试导致整个构建卡死; 改为直连 GitHub Release
+        # 下载 UPX 二进制(走 objects.githubusercontent.com CDN, 不依赖 apt 镜像), 失败再回退 apt
         if [ "${{ matrix.os }}" = "windows" ]; then
-          upx --best output/gensokyo-${{ matrix.os }}-${{ matrix.goarch }}.exe
+          UPX_BIN=upx-4.2.4-win64/upx.exe
+          UPX_URL=https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-win64.zip
+          curl -fsSL -o /tmp/upx.zip "$UPX_URL" && (cd /tmp && unzip -o upx.zip >/dev/null)
         else
-          upx --best output/gensokyo-${{ matrix.os }}-${{ matrix.goarch }}
+          UPX_BIN=upx-4.2.4-amd64_linux/upx
+          UPX_URL=https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-amd64_linux.tar.xz
+          curl -fsSL -o /tmp/upx.tar.xz "$UPX_URL" && tar -xf /tmp/upx.tar.xz -C /tmp
+        fi
+        if [ -x "/tmp/$UPX_BIN" ] || [ -f "/tmp/$UPX_BIN" ]; then
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            /tmp/$UPX_BIN --best output/gensokyo-${{ matrix.os }}-${{ matrix.goarch }}.exe
+          else
+            chmod +x /tmp/$UPX_BIN && /tmp/$UPX_BIN --best output/gensokyo-${{ matrix.os }}-${{ matrix.goarch }}
+          fi
+        else
+          echo "UPX 直连下载失败, 回退 apt 安装"
+          sudo apt-get update -o Acquire::Retries=3
+          sudo apt-get install -y upx-ucl 2>/dev/null || sudo apt-get install -y upx
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            upx --best output/gensokyo-${{ matrix.os }}-${{ matrix.goarch }}.exe
+          else
+            upx --best output/gensokyo-${{ matrix.os }}-${{ matrix.goarch }}
+          fi
         fi
 
     - name: Upload artifact

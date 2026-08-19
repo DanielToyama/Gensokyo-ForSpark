@@ -101,6 +101,9 @@
 > - **2026-08-19**（DanielToyama）：fakeReply 假回复前缀真实 at 升级 + `at_markdown` 默认开启
 >   - 修改文件：`handlers/message_parser.go`（`buildFakeReplyPrefix` 新增 `mdAt` 参数、`mdAtForFakeReply` 辅助函数）、`config/config.go`（`GetAtMarkdown` 默认 `true`）、`structs/structs.go`、`template/config_template.go`、根目录 `config.yml`、`gensokyo-config-gen.html`（「⑧ 真实 At」默认勾选开启）、`readme.md`
 >   - 变更内容：`at_markdown` **默认开启**；fakeReply 假回复前缀"回复 @昵称"在群消息 + `at_markdown` 开启时升级为官方文本链真实 at 标签 `<qqbot-at-user id="openid"/>`（openid 从 msgmap 记录的 `UserID` 经 idmap 反查），整条消息随 markdown 升级发送，群里渲染真实"回复 @某某"；**私聊/频道无 markdown-at 升级链路**（会显示原始标签），回退为文本 @昵称；**图文+at 富媒体消息**维持原样（官方富媒体通道不渲染 at 标签，at 还原为 @昵称，不做公网图合并）
+> - **2026-08-19**（DanielToyama）：Release workflow UPX 安装改直连 GitHub Release 下载（apt 镜像卡死修复）
+>   - 修改文件：`.github/workflows/cross_compile.yml`、`readme.md`
+>   - 变更内容：`sudo apt-get update` 依赖 azure.archive.ubuntu.com 镜像，该镜像（微软托管 runner 专用）抽风时 apt 无限重试，整个构建卡死在 Compress with UPX 步（2026-08-19 `v2026.08.19.144851` 实测）；改为直连 `github.com/upx/upx` Release 下载 UPX 二进制（走 objects.githubusercontent.com CDN，不依赖 apt 镜像），下载失败才回退 apt（带 `Acquire::Retries=3` 重试上限，不再无限挂起）
 > - **2026-08-18**（DanielToyama）：入群审核 comment 增强 + 空值留痕（对应用户反馈"审核内容变成了空"）
 >   - 修改文件：`Processor/ProcessGroupJoinRequest.go`、`handlers/group_mgmt_common.go`、`handlers/get_group_join_request_list.go`、`readme.md`
 >   - 变更内容：申请词 `comment` 支持**问答验证**（`verify_info.method=admin_review_qa`，官方不回填 `verify_message`，问题和回答在 `verify_info.review_qa_list`）——拼接为 `问:… 答:…` 展示；**`get_group_join_request_list` 每条申请附加 `comment` 增强字段**（原字段不变）；`comment` 最终仍为空时打印**留痕日志**（含完整 `verify_info`），下次复发即可区分"申请人没填验证消息 / 官方事件字段缺失 / 偶发丢字段"
