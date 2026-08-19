@@ -40,7 +40,7 @@
 >      - 拓展API：`get_group_join_request_list`（入群申请列表，分页）、`get_group_restrict_chat_setting` / `set_group_restrict_chat_setting`（禁言状态查询 / 原始透传）、`get_group_bot_state`（机器人群内状态）
 >      - 入群自动审批策略 6 个接口：`create/get/update/delete_join_approval_strategy` + `update_join_approval_strategy_whitelist` + `execute_join_approval_strategy`
 > 5. **SparkBridge 群服互通适配**
->    - **群消息 at 转文字**：官方 API 实测不渲染任何 @ 标签（`<qqbot-at-user id="openid"/>` 显示原文，amsghook 等实战项目亦确认"官机不支持 at"），gsk 出站时自动把 at 段转成 **`@昵称`** 文本（昵称缓存优先：每条群消息/加群申请都会缓存官方 username，**持久化 7 天、重启不丢**）；**昵称未知时显示 `@Openid+openid前8位`** 保底（让客户区分这不是真 QQ 号）
+>    - **群消息 at 转换**：官方 API 发送富文本实测不渲染任何 @ 标签，gsk 出站时自动把 at 段转成markdown真at或转换为 **`@昵称`** 文本（若需要发送图片情况下无法使用md，使用昵称缓存优先：每条群消息/加群申请都会缓存官方 username，**持久化 7 天、重启不丢**）；**昵称未知时显示 `@Openid+openid前8位`** 保底（让客户区分这不是真 QQ 号）
 >    - **`get_stranger_info` 已实现**：昵称取官方事件缓存的 `username`（加群申请等事件携带）；`sex/age` 官方不提供返回空/0；**`qqLevel` 官方无 QQ 等级数据，固定 9999** 放行等级门槛（防插件按 0 级误拒）
 >    - **任何 action 都有合法 JSON 回应**：未注册/出错的 action 回 `{"status":"failed","retcode":1400,"data":{"message":...},"echo":...}`，不再沉默（避免 SparkBridge 等对端等待超时拿 undefined 后 JSON5 解析崩溃）
 >    - **`set_group_add_request` 支持只传 flag**：SparkBridge groupRequest 插件审批只传 `flag(join_request_id)`/`approve`/`reason` 时，从事件缓存（`join_request_id → 群/成员 openid`）反查后调官方审批接口；`approve=false` 即拒绝（不再要求 refuse 字段）
@@ -52,13 +52,11 @@
 >    - **fakeReply 升级**（`at_markdown` 开启时生效）：前缀"回复 @昵称"的昵称部分替换为官方文本链真实 at 标签 `<qqbot-at-user id="openid"/>`（openid 从 msgmap 记录的 `UserID` 经 idmap 反查），整条消息随 markdown 升级发送，群里渲染出真实的"回复 @某某"；反查失败或私聊/频道场景回退为文本 @昵称
 > 7. **真实 At（Markdown）AtMarkdown**（官方文本链 at 标签不渲染 → markdown 消息发真 at）
 >    - 官方文本链文档给出的 at 格式 `<qqbot-at-user id="openid"/>`（旧协议 `<@userid>` 已废弃）**实测在纯文本消息不渲染**（显示原文）；频道 markdown 模板语法 `<at id="openid"></at>` 在**群聊自定义 markdown 同样实测不渲染**（2026-08-19 实测），此前 gsk 出站 at 一律转 **`@昵称`**（见能力 5）
->    - 官方开发者实测：**markdown 消息**可渲染真实 at；且 2026/04/23 起**自定义 markdown 已开放到所有机器人**（单聊/群聊，无需申请模版）
+>    - 实测：**markdown 消息**可渲染真实 at；且 2026/04/23 起**自定义 markdown 已开放到所有机器人**（单聊/群聊，无需申请模版）
 >    - 配置开关 **`at_markdown`**（**默认 `true`**）：开启后，发送**含 at 段的群纯文本消息**时自动升级为 markdown 消息（`msg_type=2`, `markdown.content` 内嵌官方文档"最新格式" `<qqbot-at-user id="openid"/>`，openid 由 idmap 反查），尝试渲染真 at；**带图/语音等富媒体消息不升级**（富媒体通道无 at 渲染，at 还原为 @昵称；图文+at 不合并）
->    - ⚠️ 依赖 openid 反查成功；`<at>`（频道模板语法）实测群聊不渲染，此版本改用 `<qqbot-at-user>` 需实测确认
-
->
+>    - 持续更新，更多与onebot11不兼容之处可反馈，我将尝试支持。
 > ### 配置说明
-> 🛠️ 不想手写配置？用**可视化配置生成器**：[打开 gensokyo-config-gen.html](https://htmlpreview.github.io/?https://raw.githubusercontent.com/DanielToyama/Gensokyo/main/gensokyo-config-gen.html)（浏览器直接渲染成页面；也可本地双击仓库根目录同名文件，或在 SparkBridge 的「Gensokyo配置生成」页面使用内置同款）
+> 🛠️ 不想手写配置？用**可视化配置生成器**：[打开 gensokyo-config-gen.html](https://htmlpreview.github.io/?https://raw.githubusercontent.com/DanielToyama/Gensokyo-spark/main/gensokyo-config-gen.html)（浏览器直接渲染成页面；也可本地双击仓库根目录同名文件，或在 SparkBridge 的「Gensokyo配置生成」页面使用内置同款）
 > ```yaml
 > text_intent:
 >   - "GroupMessageEventHandler"      # 群全量消息（需官方开放权限）
