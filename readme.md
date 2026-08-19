@@ -105,6 +105,9 @@
 > - **2026-08-19**（DanielToyama）：Release workflow UPX 二进制统一用 linux amd64 版（上门修复的 win64 版 bug）
 >   - 修改文件：`.github/workflows/cross_compile.yml`、`readme.md`
 >   - 变更内容：一次修复在 `matrix.os=windows` 时下载 `upx-4.2.4-win64.zip` 并在 runner 上执行——GitHub runner 是 **Linux 环境，无法运行 Windows 的 PE 程序**，windows 目标任务直接失败；linux amd64 版 UPX **同时支持压缩 PE(.exe)与 ELF**，故所有目标统一下载 linux amd64 版 UPX 并直连 GitHub Release（不走 apt 镜像），apt 仅作兜底（带重试上限）
+> - **2026-08-20**（DanielToyama）：修复群禁言被 `guild_id` 配置读取卡死（`set_group_ban` / `set_group_whole_ban` 群聊分支永远到不了）
+>   - 修改文件：`handlers/set_group_ban.go`、`handlers/set_group_whole_ban.go`、`readme.md`
+>   - 变更内容：两个 handler 把 `idmap.ReadConfigv2(groupID, "guild_id")`（仅频道场景需要）放在 switch 之前——普通群聊从未存过该配置，查询必报 `key 'guild_id' in section '...' does not exist` 并直接 return，**群聊禁言/全员禁言实际从未执行**（应用端只看到报错日志、由于是 fire-and-forget 还看不到失败反馈）；已将 `guild_id` 读取移入 `case "guild"` 分支，群聊分支正常走 `POST /v2/groups/{openid}/restrict_chat_setting`（成员级 `members[].mute_expire_at` / 全员 `global_rule.mode`）
 > - **2026-08-19**（DanielToyama）：入群申请 comment 问答格式改为 onebot 标准 `问题：…\n答案：…`
 >   - 修改文件：`handlers/group_mgmt_common.go`（`BuildJoinRequestComment`）、`readme.md`
 >   - 变更内容：问答验证（`admin_review_qa`）的 comment 展示由 `问:Q 答:A；问:Q 答:A` 改为 **onebot 标准格式** `问题：<问题>\n答案：<答案>`（全角冒号，多组问答依序换行）——官方与其他 onebot 客户端均是此格式，下游按标准格式解析/匹配答案；无回答时省略"答案："行；`request.group` 事件 comment 与 `get_group_join_request_list` 的 comment 增强字段同时生效

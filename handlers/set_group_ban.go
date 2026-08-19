@@ -26,12 +26,6 @@ func SetGroupBan(client callapi.Client, api openapi.OpenAPI, apiv2 openapi.OpenA
 	// 从message中获取group_id和UserID
 	groupID := message.Params.GroupID.(string)
 	receivedUserID := message.Params.UserID.(string)
-	//读取ini 通过ChannelID取回之前储存的guild_id
-	guildID, err := idmap.ReadConfigv2(groupID, "guild_id")
-	if err != nil {
-		mylog.Printf("Error reading config: %v", err)
-		return "", nil
-	}
 	// 根据UserID读取真实的userid
 	realUserID, err := idmap.RetrieveRowByIDv2(receivedUserID)
 	if err != nil {
@@ -80,12 +74,18 @@ func SetGroupBan(client callapi.Client, api openapi.OpenAPI, apiv2 openapi.OpenA
 		mylog.Printf("setGroupBan(频道): 目前暂未适配私聊虚拟群场景的禁言能力")
 		return "", nil
 	case "guild":
+		// 读取ini 通过ChannelID取回之前储存的guild_id (仅频道场景需要)
+		guildID, err := idmap.ReadConfigv2(groupID, "guild_id")
+		if err != nil {
+			mylog.Printf("Error reading config: %v", err)
+			return "", nil
+		}
 		duration := strconv.Itoa(message.Params.Duration)
 		mute := &dto.UpdateGuildMute{
 			MuteSeconds: duration,
 			UserIDs:     []string{realUserID},
 		}
-		err := api.MemberMute(context.TODO(), guildID, realUserID, mute)
+		err = api.MemberMute(context.TODO(), guildID, realUserID, mute)
 		if err != nil {
 			mylog.Printf("Error muting member: %v", err)
 		}
