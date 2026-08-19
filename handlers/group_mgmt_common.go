@@ -14,7 +14,8 @@ import (
 // 群聊管理 handler 公共辅助函数
 
 // [DanielToyama] BuildJoinRequestComment 计算入群申请的展示文本(onebot request.group 的 comment / 申请列表条目的 comment 增强)
-// - 问答验证(admin_review_qa): 官方不回填 verify_message, 问题和用户回答在 review_qa_list, 拼为 "问:Q 答:A；问:Q 答:A"
+// - 问答验证(admin_review_qa): 官方不回填 verify_message, 问题和用户回答在 review_qa_list; 按 **onebot 标准格式**
+//   拼接为 "问题：<问题>\n答案：<答案>"(全角冒号, 多组问答依序换行; 无回答时省略"答案："行)
 // - 其余方式: 取 verify_message 原文
 // - apply_source=invited(被邀请): 为空时兜底 "被邀请入群"
 func BuildJoinRequestComment(method, verifyMessage, applySource string, qaList []dto.ReviewQA) string {
@@ -24,13 +25,13 @@ func BuildJoinRequestComment(method, verifyMessage, applySource string, qaList [
 		if len(qaList) > 0 {
 			parts := make([]string, 0, len(qaList))
 			for _, qa := range qaList {
-				t := "问:" + qa.Question
+				t := "问题：" + qa.Question
 				if qa.Answer != "" {
-					t += " 答:" + qa.Answer
+					t += "\n答案：" + qa.Answer
 				}
 				parts = append(parts, t)
 			}
-			comment = strings.Join(parts, "；")
+			comment = strings.Join(parts, "\n")
 		}
 	default:
 		comment = verifyMessage
