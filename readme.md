@@ -105,6 +105,9 @@
 > - **2026-08-19**（DanielToyama）：Release workflow UPX 二进制统一用 linux amd64 版（上门修复的 win64 版 bug）
 >   - 修改文件：`.github/workflows/cross_compile.yml`、`readme.md`
 >   - 变更内容：一次修复在 `matrix.os=windows` 时下载 `upx-4.2.4-win64.zip` 并在 runner 上执行——GitHub runner 是 **Linux 环境，无法运行 Windows 的 PE 程序**，windows 目标任务直接失败；linux amd64 版 UPX **同时支持压缩 PE(.exe)与 ELF**，故所有目标统一下载 linux amd64 版 UPX 并直连 GitHub Release（不走 apt 镜像），apt 仅作兜底（带重试上限）
+> - **2026-08-20**（DanielToyama）：修复 `delete_msg` 撤回两处问题（响应结构误用 + 缺参静默不执行）
+>   - 修改文件：`handlers/delete_msg.go`、`readme.md`
+>   - 变更内容：① 响应误用 `GetStatusResponse`（返回了 get_status 的 `data.good/online/stat`），改为标准 onebot v11 成功响应 `data:null`；② 标准 `delete_msg` 仅传 `message_id`，原实现要求 `group_id/user_id` 非空才执行、缺省时四个撤回分支全部跳过（日志只显示一个可疑响应、实际什么都没撤），现在缺参时从 msgmap 缓存（群/私聊消息入库时记录的 GroupID/UserID）反查撤回对象再执行 `RetractGroupMessage` / `RetractC2CMessage`，并打印反查日志
 > - **2026-08-20**（DanielToyama）：修复群禁言被 `guild_id` 配置读取卡死（`set_group_ban` / `set_group_whole_ban` 群聊分支永远到不了）
 >   - 修改文件：`handlers/set_group_ban.go`、`handlers/set_group_whole_ban.go`、`readme.md`
 >   - 变更内容：两个 handler 把 `idmap.ReadConfigv2(groupID, "guild_id")`（仅频道场景需要）放在 switch 之前——普通群聊从未存过该配置，查询必报 `key 'guild_id' in section '...' does not exist` 并直接 return，**群聊禁言/全员禁言实际从未执行**（应用端只看到报错日志、由于是 fire-and-forget 还看不到失败反馈）；已将 `guild_id` 读取移入 `case "guild"` 分支，群聊分支正常走 `POST /v2/groups/{openid}/restrict_chat_setting`（成员级 `members[].mute_expire_at` / 全员 `global_rule.mode`）

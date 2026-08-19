@@ -1,5 +1,11 @@
 package handlers
 
+// Modified by DanielToyama on 2026-08-20 (Gensokyo-ForSpark fork)
+// 修复1: 响应结构误用 GetStatusResponse(serialize出 good/online/stat 的 get_status 数据),
+//        改为标准 onebot v11 delete_msg 成功响应 data:null
+// 修复2: 标准 delete_msg 仅传 message_id; 缺省 group_id/user_id 时从 msgmap 缓存
+//        (入站消息入库时记录 GroupID/UserID/MsgType) 反查撤回对象, 不再"静默什么都不做"
+
 import (
 	"context"
 	"encoding/json"
@@ -9,6 +15,7 @@ import (
 	"github.com/hoshinonyaruko/gensokyo/config"
 	"github.com/hoshinonyaruko/gensokyo/echo"
 	"github.com/hoshinonyaruko/gensokyo/idmap"
+	"github.com/hoshinonyaruko/gensokyo/msgmap"
 	"github.com/hoshinonyaruko/gensokyo/mylog"
 	"github.com/tencent-connect/botgo/openapi"
 )
@@ -20,6 +27,9 @@ func init() {
 func DeleteMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openapi.OpenAPI, message callapi.ActionMessage) (string, error) {
 	var RealMsgID string
 	var err error
+
+	// 应用端传入的原始 message_id, 还原前保留(用于 msgmap 反查撤回对象)
+	orignalMsgID := message.Params.MessageID.(string)
 
 	// 不是stringob才需要转换
 	if !config.GetStringOb11() {
@@ -70,32 +80,43 @@ func DeleteMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openapi.OpenAPI
 	}
 
 	//撤回群信息
+	var groupTarget string
 	if message.Params.GroupID != nil && message.Params.GroupID != "" {
+		groupTarget = message.Params.GroupID.(string)
+	} else if info, ok := msgmap.LookupMessage(orignalMsgID); ok && info.MsgType == "group" && info.GroupID != "" {
+		// [修复] 标准 delete_msg 只传 message_id: 从 msgmap 反查群对象
+		groupTarget = info.GroupID
+		mylog.Printf("delete_msg: 缺省group_id, 从msgmap反查到群[%v]", info.GroupID)
+	}
+	if groupTarget != "" {
 		// 判断是否是原始id
-		if len(message.Params.GroupID.(string)) != 32 {
+		if len(groupTarget) != 32 {
 			var originalGroupID string
-			originalGroupID, err := idmap.RetrieveRowByIDv2(message.Params.GroupID.(string))
+			originalGroupID, err := idmap.RetrieveRowByIDv2(groupTarget)
 			if err != nil {
 				mylog.Printf("Error retrieving original GroupID: %v", err)
 			}
-			message.Params.GroupID = originalGroupID
-			err = api.RetractGroupMessage(context.TODO(), message.Params.GroupID.(string), message.Params.MessageID.(string), openapi.RetractMessageOptionHidetip)
-			if err != nil {
-				fmt.Println("Error retracting group message:", err)
-			}
-		} else {
-			err = api.RetractGroupMessage(context.TODO(), message.Params.GroupID.(string), message.Params.MessageID.(string), openapi.RetractMessageOptionHidetip)
-			if err != nil {
-				fmt.Println("Error retracting group message:", err)
-			}
+			groupTarget = originalGroupID
+		}
+		err = api.RetractGroupMessage(context.TODO(), groupTarget, message.Params.MessageID.(string), openapi.RetractMessageOptionHidetip)
+		if err != nil {
+			fmt.Println("Error retracting group message:", err)
 		}
 	}
 
 	//撤回C2C私信消息列表
+	var userTarget string
 	if message.Params.UserID != nil && message.Params.UserID != "" {
+		userTarget = message.Params.UserID.(string)
+	} else if info, ok := msgmap.LookupMessage(orignalMsgID); ok && info.MsgType != "group" && info.UserID != "" {
+		// [修复] 私聊消息缺省 user_id: 从 msgmap 反查用户对象
+		userTarget = info.UserID
+		mylog.Printf("delete_msg: 缺省user_id, 从msgmap反查到用户[%v]", info.UserID)
+	}
+	if userTarget != "" {
 		var UserID string
 		//还原真实的userid
-		UserID, err := idmap.RetrieveRowByIDv2(message.Params.UserID.(string))
+		UserID, err := idmap.RetrieveRowByIDv2(userTarget)
 		if err != nil {
 			mylog.Printf("Error reading config: %v", err)
 			return "", nil
@@ -108,13 +129,17 @@ func DeleteMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openapi.OpenAPI
 
 	}
 
-	var response GetStatusResponse
-	response.Message = ""
-	response.RetCode = 0
-	response.Status = "ok"
-	response.Echo = message.Echo
-
-	outputMap := structToMap(response)
+	// [修复] 标准 onebot v11 成功响应: data 为 null (原实现误用 GetStatusResponse, 返回了
+	// get_status 的 good/online/stat 数据, 会让应用端误以为收到了 bot 状态)
+	outputMap := map[string]interface{}{
+		"data":    nil,
+		"message": "",
+		"retcode": 0,
+		"status":  "ok",
+	}
+	if message.Echo != nil {
+		outputMap["echo"] = message.Echo
+	}
 
 	mylog.Printf("delete_msg: %+v\n", outputMap)
 
@@ -123,10 +148,9 @@ func DeleteMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openapi.OpenAPI
 		mylog.Printf("Error sending message via client: %v", err)
 	}
 	//把结果从struct转换为json
-	result, err := json.Marshal(response)
+	result, err := json.Marshal(outputMap)
 	if err != nil {
 		mylog.Printf("Error marshaling data: %v", err)
-		//todo 符合onebotv11 ws返回的错误码
 		return "", nil
 	}
 	return string(result), nil
