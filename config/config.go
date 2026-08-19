@@ -2358,6 +2358,16 @@ func GetFakeReply() bool {
 	return true
 }
 
+// [DanielToyama] 获取AtMarkdown (真实at markdown开关; 开启后含at的群文本消息升级为markdown消息渲染真at; 默认关闭)
+func GetAtMarkdown() bool {
+	mu.RLock()
+	defer mu.RUnlock()
+	if instance != nil {
+		return instance.Settings.AtMarkdown
+	}
+	return false
+}
+
 // 获取GetAutoLink的值
 func GetAutoLink() bool {
 	mu.RLock()

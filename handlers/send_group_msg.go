@@ -359,7 +359,7 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 
 			var resp *dto.GroupMessageResponse
 			// 发送组合消息
-			resp, err = apiv2.PostGroupMessage(context.TODO(), message.Params.GroupID.(string), groupMessage)
+			resp, err = sendGroupMsgUpgraded(apiv2, message.Params.GroupID.(string), groupMessage)
 			if err != nil {
 				mylog.Printf("发送组合消息失败: %v", err)
 				// 错误保存到本地
@@ -378,7 +378,7 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 			} else if err != nil && strings.Contains(err.Error(), `"code":40034025`) {
 				// event_id无效的时候
 				groupMessage.EventID = ""
-				resp, err = apiv2.PostGroupMessage(context.TODO(), message.Params.GroupID.(string), groupMessage)
+				resp, err = sendGroupMsgUpgraded(apiv2, message.Params.GroupID.(string), groupMessage)
 				if err != nil {
 					mylog.Printf("发送组合消息失败: %v", err)
 					// 错误保存到本地
@@ -431,7 +431,7 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 			var resp *dto.GroupMessageResponse
 			groupMessage.Timestamp = time.Now().Unix() // 设置时间戳
 			//重新为err赋值
-			resp, err = apiv2.PostGroupMessage(context.TODO(), message.Params.GroupID.(string), groupMessage)
+			resp, err = sendGroupMsgUpgraded(apiv2, message.Params.GroupID.(string), groupMessage)
 			if err != nil {
 				mylog.Printf("发送文本群组信息失败: %v", err)
 				// 错误保存到本地
@@ -449,7 +449,7 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 				echo.PushGlobalStack(pair)
 			} else if err != nil && strings.Contains(err.Error(), `"code":40034025`) {
 				groupMessage.EventID = ""
-				resp, err = apiv2.PostGroupMessage(context.TODO(), message.Params.GroupID.(string), groupMessage)
+				resp, err = sendGroupMsgUpgraded(apiv2, message.Params.GroupID.(string), groupMessage)
 				if err != nil {
 					mylog.Printf("发送文本群组信息失败: %v", err)
 					// 错误保存到本地
@@ -517,7 +517,7 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 							return "", nil // 或其他错误处理
 						}
 						//重新为err赋值
-						resp, err = apiv2.PostGroupMessage(context.TODO(), message.Params.GroupID.(string), groupMessage)
+						resp, err = sendGroupMsgUpgraded(apiv2, message.Params.GroupID.(string), groupMessage)
 						if err != nil {
 							mylog.Printf("发送 MessageToCreate 信息失败: %v", err)
 							// 错误保存到本地
@@ -537,7 +537,7 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 							//请求参数event_id无效 重试
 							groupMessage.EventID = ""
 							//重新为err赋值
-							resp, err = apiv2.PostGroupMessage(context.TODO(), message.Params.GroupID.(string), groupMessage)
+							resp, err = sendGroupMsgUpgraded(apiv2, message.Params.GroupID.(string), groupMessage)
 							if err != nil {
 								mylog.Printf("发送 MessageToCreate 信息失败 on code 40034025: %v", err)
 								// 错误保存到本地
@@ -602,7 +602,7 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 					}
 					groupMessage.Timestamp = time.Now().Unix() // 设置时间戳
 					//重新为err赋值
-					resp, err = apiv2.PostGroupMessage(context.TODO(), message.Params.GroupID.(string), groupMessage)
+					resp, err = sendGroupMsgUpgraded(apiv2, message.Params.GroupID.(string), groupMessage)
 					if err != nil {
 						mylog.Printf("发送图片失败: %v", err)
 						// 错误保存到本地
@@ -620,7 +620,7 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 						echo.PushGlobalStack(pair)
 					} else if err != nil && strings.Contains(err.Error(), `"code":40034025`) {
 						groupMessage.EventID = ""
-						resp, err = apiv2.PostGroupMessage(context.TODO(), message.Params.GroupID.(string), groupMessage)
+						resp, err = sendGroupMsgUpgraded(apiv2, message.Params.GroupID.(string), groupMessage)
 						if err != nil {
 							mylog.Printf("发送图片失败: %v", err)
 						}
@@ -2085,7 +2085,7 @@ func SendStackMessages(apiv2 openapi.OpenAPI, messageid string, GroupID string) 
 			pair.GroupMessage.MsgSeq = msgseq + 1
 			pair.GroupMessage.MsgID = messageid
 			mylog.Printf("发送栈中的消息 使用MsgSeq[%v]使用MsgID[%v]", pair.GroupMessage.MsgSeq, pair.GroupMessage.MsgID)
-			_, err := apiv2.PostGroupMessage(context.TODO(), pair.Group, pair.GroupMessage)
+			_, err := sendGroupMsgUpgraded(apiv2, pair.Group, pair.GroupMessage)
 			if err != nil {
 				mylog.Printf("发送组合消息失败: %v", err)
 				// 错误保存到本地
@@ -2458,7 +2458,39 @@ func processImgUrl(input string) string {
 	return processed
 }
 
+// [DanielToyama] at_markdown: 纯文本消息若已含 markdown at 标签则升级为 markdown 消息(msg_type=2)
+// 仅在 at_markdown 开关开启且消息为纯文本(msg_type=0)时生效; 带图/语音等富媒体消息不升级
+func maybeUpgradeToMarkdownAt(groupMessage *dto.MessageToCreate) *dto.MessageToCreate {
+	if !config.GetAtMarkdown() {
+		return groupMessage
+	}
+	if groupMessage == nil || groupMessage.Markdown != nil || groupMessage.MsgType != 0 {
+		return groupMessage
+	}
+	if !strings.Contains(groupMessage.Content, "<at id=\"") || !strings.Contains(groupMessage.Content, "</at>") {
+		return groupMessage
+	}
+	// markdown 自定义内容长度上限兜底, 超出则保持文本发送(文本模式会显示 @昵称)
+	if len(groupMessage.Content) > 2800 {
+		mylog.Printf("at_markdown: 消息过长(%v字符), 保持文本发送", len(groupMessage.Content))
+		return groupMessage
+	}
+	groupMessage.MsgType = 2
+	groupMessage.Markdown = &dto.Markdown{Content: groupMessage.Content}
+	groupMessage.Content = ""
+	mylog.Printf("at_markdown: 升级为 markdown 消息发送, content[%.60s]", groupMessage.Markdown.Content)
+	return groupMessage
+}
+
+// [DanielToyama] 群文本消息发送统一入口: 发送前做 at_markdown 升级(富媒体消息不经过这里)
+func sendGroupMsgUpgraded(apiv2 openapi.OpenAPI, groupID string, groupMessage *dto.MessageToCreate) (*dto.GroupMessageResponse, error) {
+	groupMessage = maybeUpgradeToMarkdownAt(groupMessage)
+	return apiv2.PostGroupMessage(context.TODO(), groupID, groupMessage)
+}
+
 func postGroupMessageWithRetry(apiv2 openapi.OpenAPI, groupID string, groupMessage *dto.MessageToCreate) (resp *dto.GroupMessageResponse, err error) {
+	// [DanielToyama] at_markdown: 发送前升级(重试/队列复用同一消息对象, 幂等)
+	groupMessage = maybeUpgradeToMarkdownAt(groupMessage)
 	retryCount := 3 // 设置最大重试次数为3
 	for i := 0; i < retryCount; i++ {
 		// 递增msgid

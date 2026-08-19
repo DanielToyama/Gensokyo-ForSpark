@@ -1030,6 +1030,13 @@ func transformMessageTextAt(messageText string, groupid string) string {
 				return ""
 			}
 
+			// [DanielToyama] at_markdown 真实at: 官方文本链 <qqbot-at-user id="openid"/> 实测不渲染(显示原文),
+			// 官方开发者实测 markdown 消息内嵌 <at id="openid"></at> 可渲染真 at;
+			// 开关开启时在此直接产出 markdown at 标签, 由发送侧把整条消息升级为 msg_type=2
+			if config.GetAtMarkdown() {
+				return "<at id=\"" + realUserID + "\"></at>"
+			}
+
 			// 官方API不渲染@标签(实测显示原文, amsghook等实战项目亦确认"官机不支持 at"),
 			// 因此 at 转为 @昵称 文本(昵称缓存有则用之); 昵称未知时显示 @Openid+openid前8位,
 			// 让客户能区分这不是真QQ号(而不是直接移除导致欢迎等场景at空白)
