@@ -2358,7 +2358,8 @@ func GetFakeReply() bool {
 	return true
 }
 
-// [DanielToyama] 获取AtMarkdown (真实at markdown开关; 开启后含at的群文本消息升级为markdown消息渲染真at; 默认关闭)
+// [DanielToyama] 获取AtMarkdown (真实at markdown开关; 开启后含at的群纯文本消息升级为markdown消息,
+// at以官方文本链"最新格式"<qqbot-at-user id="openid"/>注入试渲染真at; 默认关闭)
 func GetAtMarkdown() bool {
 	mu.RLock()
 	defer mu.RUnlock()

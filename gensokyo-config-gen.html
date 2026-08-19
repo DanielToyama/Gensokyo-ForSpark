@@ -222,7 +222,7 @@ h1 { font-size: 20px; font-weight: 600; color: #1e293b; margin-bottom: 6px; }
 
 <div class="card">
   <h2>⑧ 真实 At（Markdown）AtMarkdown（官方文本链 at 标签不渲染，改用 markdown 消息试真 at）</h2>
-  <div style="font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:10px 14px;margin-bottom:14px">官方文本链的 at 格式 <code>&lt;qqbot-at-user id="openid"/&gt;</code> 实测在群聊<b>不渲染</b>（显示原文），之前 Gensokyo 因此把出站 at 转为"@昵称"文本。其他官方开发者介绍：<b>markdown 消息</b>内嵌 <code>&lt;at id="openid"&gt;&lt;/at&gt;</code> 可渲染真实 at（2026/04/23 起自定义 markdown 已开放到所有机器人，无需申请模版）。开启后，<b>含 at 的群文本消息</b>自动升级为 markdown 消息（msg_type=2）发送；带图/语音等富媒体消息、超长消息仍按原方式发送。默认关闭（保持 @昵称），请先在测试群验证。</div>
+  <div style="font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:10px 14px;margin-bottom:14px">官方文本链的 at 格式 <code>&lt;qqbot-at-user id="openid"/&gt;</code> 在<strong>纯文本</strong>消息里实测<strong>不渲染</strong>（显示原文）；频道 markdown 模板语法 <code>&lt;at id="openid"&gt;&lt;/at&gt;</code> 在群聊自定义 markdown 里实测<strong>同样显示原文</strong>（2026-08-19 实测）。其他官方开发者介绍：<strong>markdown 消息</strong>可渲染真实 at（2026/04/23 起自定义 markdown 已开放到所有机器人）。开启后，<strong>含 at 的群纯文本消息</strong>自动升级为 markdown 消息（msg_type=2），at 按文档"最新格式" <code>&lt;qqbot-at-user id="openid"/&gt;</code> 注入；带图/语音等富媒体消息、超长消息不升级（at 还原为 @昵称）。默认关闭，请先在测试群验证。</div>
   <div class="field">
     <label>真实 At（Markdown）开关 (at_markdown)</label>
     <div class="radio-group">

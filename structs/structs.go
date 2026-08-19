@@ -120,7 +120,7 @@ type Settings struct {
 	DowntimeMessageEnabled bool   `yaml:"downtime_message_enabled"` // [新增] 维护通知总开关: false=WS全部掉线时不回复维护文案
 	DowntimeCooldown       int    `yaml:"downtime_cooldown"`        // [新增] 维护回复冷却(分钟): 群/频道一对多场景同一用户冷却期内最多回一次, 0=不冷却; 私聊/C2C不受影响
 	FakeReply              bool   `yaml:"fake_reply"`               // [新增] fakeReply假回复开关: true=应用端发send_*_msg携带reply引用段时,把回复文本伪造为"回复 @昵称\n————\n原内容"(官方协议不支持真实引用); false=忽略reply段
-	AtMarkdown             bool   `yaml:"at_markdown"`              // [新增] 真实at(markdown)开关: 官方文本链<qqbot-at-user id="openid"/>实测不渲染, 开启后含at的群消息升级为markdown消息(msg_type=2)内嵌<at id="openid"></at>渲染真at; false=维持@昵称文本
+	AtMarkdown             bool   `yaml:"at_markdown"`              // [新增] 真实at(markdown)开关: 官方文本链<qqbot-at-user id="openid"/>纯文本实测不渲染, 频道模板语法<at id="openid">群聊实测也不渲染; 开启后含at的群纯文本消息升级为markdown消息(msg_type=2), at以文档"最新格式"<qqbot-at-user id="openid"/>注入, 实测markdown内可渲染真at; false=维持@昵称文本
 	MemoryMsgid            bool   `yaml:"memory_msgid"`
 	ThreadsRetMsg          bool   `yaml:"threads_ret_msg"`
 	NoRetMsg               bool   `yaml:"no_ret_msg"`
