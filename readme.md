@@ -106,8 +106,8 @@
 >   - 修改文件：`.github/workflows/cross_compile.yml`、`readme.md`
 >   - 变更内容：一次修复在 `matrix.os=windows` 时下载 `upx-4.2.4-win64.zip` 并在 runner 上执行——GitHub runner 是 **Linux 环境，无法运行 Windows 的 PE 程序**，windows 目标任务直接失败；linux amd64 版 UPX **同时支持压缩 PE(.exe)与 ELF**，故所有目标统一下载 linux amd64 版 UPX 并直连 GitHub Release（不走 apt 镜像），apt 仅作兜底（带重试上限）
 > - **2026-08-20**（DanielToyama）：新增野鸡 qlogo 兼容路由 `GET /g?b=qq&nk=数字ID&s=尺寸`（内部 HTTP 服务）
->   - 修改文件：`main.go`、`server/avatarRedirect.go`、`readme.md`
->   - 变更内容：部分客户端/前端习惯用 `https://q1.qlogo.cn/g?b=qq&nk=<QQ号码>&s=640` 取头像，但官方 bot 无 QQ 号（出站 avatar 是 `q.qlogo.cn/qqapp/<appid>/<openid>/640`）；新增路由把应用端视角的"虚构QQ号"（idmap 数字行ID）反查为 openid 后 302 重定向到官方头像地址，尺寸 s 透传；示例：`http://<gsk地址>:<端口>/g?b=qq&nk=800512121&s=640`；`b` 非 qq / nk、s 非纯数字 返回 400，反查不到返回 404
+>   - 修改文件：`main.go`、`server/avatarProxy.go`、`readme.md`
+>   - 变更内容：部分客户端/前端习惯用 `https://q1.qlogo.cn/g?b=qq&nk=<QQ号码>&s=640` 取头像，但官方 bot 无 QQ 号（出站 avatar 是 `q.qlogo.cn/qqapp/<appid>/<openid>/640`）；新增路由把应用端视角的"虚构QQ号"（idmap 数字行ID）反查为 openid。**默认代理模式**：由 Gensokyo 后台下载官方头像后直接返回图片字节流（透传 Content-Type，客户端无需理解重定向，覆盖 axios/浏览器/官方服务器/不跟随 302 的客户端等全部场景）；显式 `&redirect=1` 时才 302 到官方地址。示例：`http://<gsk地址>:<端口>/g?b=qq&nk=800512121&s=640`；`b` 非 qq / nk、s 非纯数字 返回 400，反查不到返回 404，头像源不可达返回 502
 > - **2026-08-20**（DanielToyama）：修复 `delete_msg` 撤回两处问题（响应结构误用 + 缺参静默不执行）
 >   - 修改文件：`handlers/delete_msg.go`、`readme.md`
 >   - 变更内容：① 响应误用 `GetStatusResponse`（返回了 get_status 的 `data.good/online/stat`），改为标准 onebot v11 成功响应 `data:null`；② 标准 `delete_msg` 仅传 `message_id`，原实现要求 `group_id/user_id` 非空才执行、缺省时四个撤回分支全部跳过（日志只显示一个可疑响应、实际什么都没撤），现在缺参时从 msgmap 缓存（群/私聊消息入库时记录的 GroupID/UserID）反查撤回对象再执行 `RetractGroupMessage` / `RetractC2CMessage`，并打印反查日志

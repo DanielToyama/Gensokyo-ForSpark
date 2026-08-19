@@ -418,7 +418,7 @@ func main() {
 	}
 	if !conf.Settings.LotusGrpc {
 		r.GET("/getid", server.GetIDHandler)
-		r.GET("/g", server.AvatarRedirectHandler) // [DanielToyama] 野鸡qlogo兼容: /g?b=qq&nk=数字ID&s=尺寸 -> 官方头像302
+		r.GET("/g", server.AvatarProxyHandler) // [DanielToyama] 野鸡qlogo兼容: /g?b=qq&nk=数字ID&s=尺寸 -> 代理返回官方头像字节流(redirect=1走302)
 	} else {
 		if conf.Settings.Lotus {
 			// 根据配置决定是否初始化 gRPC 客户端
