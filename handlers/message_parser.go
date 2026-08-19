@@ -557,7 +557,11 @@ func SendGuildPrivateResponse(client callapi.Client, err error, message *callapi
 //	原消息内容
 //
 // 原内容优先取引用段携带的 data.text, 其次取 msgmap 持久化的原文; 查不到记录时跳过伪造(返回"")。
-func buildFakeReplyPrefix(data interface{}) string {
+// mdAt=true(群消息 + at_markdown 开启)时,"回复 @昵称"的昵称部分升级为官方文本链真实at标签
+// <qqbot-at-user id="openid"/>(openid 从 msgmap 记录的 UserID 经 idmap 反查), 整条消息随后被
+// maybeUpgradeToMarkdownAt 升级为 markdown 消息, 群里渲染出真实的"回复 @某某"; 反查失败或
+// 非群消息(私聊/频道无 markdown-at 升级链路)时回退为文本 "@昵称", 避免标签被当原文显示。
+func buildFakeReplyPrefix(data interface{}, mdAt bool) string {
 	dataMap, ok := data.(map[string]interface{})
 	if !ok {
 		return ""
@@ -594,17 +598,29 @@ func buildFakeReplyPrefix(data interface{}) string {
 	if name == "" {
 		name = "未知用户"
 	}
+	// [DanielToyama] fakeReply 真实at: 群消息+at_markdown 时, 用官方文本链 at 标签替换文本 @昵称
+	atName := "@" + name
+	if mdAt && info.UserID != "" {
+		if realOpenID, err := idmap.RetrieveRowByIDv2(info.UserID); err == nil && realOpenID != "" {
+			atName = "<qqbot-at-user id=\"" + realOpenID + "\" />"
+		}
+	}
 	quoted := ""
 	if t, isStr := dataMap["text"].(string); isStr && strings.TrimSpace(t) != "" {
 		quoted = t
 	} else if info.Content != "" {
 		quoted = info.Content
 	}
-	prefix := "回复 @" + name
+	prefix := "回复 " + atName
 	if quoted != "" {
 		prefix += "\n————\n" + quoted
 	}
 	return prefix + "\n"
+}
+
+// [DanielToyama] mdAtForFakeReply 决定 fakeReply 前缀是否用真实at标签: 仅群消息 + at_markdown 开启时
+func mdAtForFakeReply(groupID interface{}) bool {
+	return groupID != nil && config.GetAtMarkdown()
 }
 
 // 信息处理函数
@@ -770,7 +786,7 @@ func parseMessageContent(paramsMessage callapi.ParamsContent, message callapi.Ac
 			case "reply":
 				// [DanielToyama] fakeReply: OneBot v11 引用段, 官方协议无法真引用, 文本伪造回复
 				if config.GetFakeReply() {
-					fakeReplyPrefix = buildFakeReplyPrefix(segmentMap["data"])
+					fakeReplyPrefix = buildFakeReplyPrefix(segmentMap["data"], mdAtForFakeReply(paramsMessage.GroupID))
 				}
 			}
 
@@ -908,7 +924,7 @@ func parseMessageContent(paramsMessage callapi.ParamsContent, message callapi.Ac
 		case "reply":
 			// [DanielToyama] fakeReply: 整条消息即为 reply 引用段(单段)时的处理, 仅生成伪造前缀作为正文
 			if config.GetFakeReply() {
-				messageText = buildFakeReplyPrefix(message["data"])
+				messageText = buildFakeReplyPrefix(message["data"], mdAtForFakeReply(paramsMessage.GroupID))
 			}
 		}
 

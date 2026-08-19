@@ -2359,14 +2359,15 @@ func GetFakeReply() bool {
 }
 
 // [DanielToyama] 获取AtMarkdown (真实at markdown开关; 开启后含at的群纯文本消息升级为markdown消息,
-// at以官方文本链"最新格式"<qqbot-at-user id="openid"/>注入试渲染真at; 默认关闭)
+// at以官方文本链"最新格式"<qqbot-at-user id="openid"/>注入试渲染真at, fakeReply前缀的@昵称也升级为真实at;
+// 默认开启)
 func GetAtMarkdown() bool {
 	mu.RLock()
 	defer mu.RUnlock()
 	if instance != nil {
 		return instance.Settings.AtMarkdown
 	}
-	return false
+	return true
 }
 
 // 获取GetAutoLink的值

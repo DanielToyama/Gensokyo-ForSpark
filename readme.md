@@ -49,11 +49,12 @@
 >    - Gensokyo 把**收到的每条群/私聊/频道消息**按 `message_id` 持久化发送者昵称与原文到本地 **`msgmap.db`**（bbolt，重复键覆盖，保留 7 天自动清理）
 >    - 应用端（如 SparkBridge）发送带 `reply` 引用段的消息时，自动文本伪造为 `回复 @昵称` + `————` + 原消息内容，再接本条消息正文；支持与 text/at/image 等段**混合发送**；查不到记录时跳过伪造、按普通消息发送
 >    - 配置开关 **`fake_reply`**（默认 `true`）：`false` = 忽略 reply 段
-> 7. **真实 At（Markdown）AtMarkdown**（官方文本链 at 标签不渲染 → markdown 消息发真 at，实验功能）
+>    - **fakeReply 升级**（`at_markdown` 开启时生效）：前缀"回复 @昵称"的昵称部分替换为官方文本链真实 at 标签 `<qqbot-at-user id="openid"/>`（openid 从 msgmap 记录的 `UserID` 经 idmap 反查），整条消息随 markdown 升级发送，群里渲染出真实的"回复 @某某"；反查失败或私聊/频道场景回退为文本 @昵称
+> 7. **真实 At（Markdown）AtMarkdown**（官方文本链 at 标签不渲染 → markdown 消息发真 at）
 >    - 官方文本链文档给出的 at 格式 `<qqbot-at-user id="openid"/>`（旧协议 `<@userid>` 已废弃）**实测在纯文本消息不渲染**（显示原文）；频道 markdown 模板语法 `<at id="openid"></at>` 在**群聊自定义 markdown 同样实测不渲染**（2026-08-19 实测），此前 gsk 出站 at 一律转 **`@昵称`**（见能力 5）
 >    - 官方开发者实测：**markdown 消息**可渲染真实 at；且 2026/04/23 起**自定义 markdown 已开放到所有机器人**（单聊/群聊，无需申请模版）
->    - 配置开关 **`at_markdown`**（默认 `false`）：开启后，发送**含 at 段的群纯文本消息**时自动升级为 markdown 消息（`msg_type=2`, `markdown.content` 内嵌官方文档"最新格式" `<qqbot-at-user id="openid"/>`，openid 由 idmap 反查），尝试渲染真 at；**带图/语音等富媒体消息与超长（>2800 字符）消息不升级**，at 还原为 @昵称
->    - ⚠️ 实验功能：markdown 消息样式与纯文本不同、且依赖 openid 反查成功；**已实测 `<at>`（频道模板语法）在群聊不渲染，此版本改用 `<qqbot-at-user>` 需再次实测**
+>    - 配置开关 **`at_markdown`**（**默认 `true`**）：开启后，发送**含 at 段的群纯文本消息**时自动升级为 markdown 消息（`msg_type=2`, `markdown.content` 内嵌官方文档"最新格式" `<qqbot-at-user id="openid"/>`，openid 由 idmap 反查），尝试渲染真 at；**带图/语音等富媒体消息不升级**（富媒体通道无 at 渲染，at 还原为 @昵称；图文+at 不合并）
+>    - ⚠️ 依赖 openid 反查成功；`<at>`（频道模板语法）实测群聊不渲染，此版本改用 `<qqbot-at-user>` 需实测确认
 
 >
 > ### 配置说明
@@ -97,6 +98,9 @@
 > - **2026-08-18**（DanielToyama）：新增真实 At（Markdown）AtMarkdown（实验功能）
 >   - 修改文件：`handlers/message_parser.go`（`transformMessageTextAt` 产出 `<at id="openid"></at>`）、`handlers/send_group_msg.go`（`maybeUpgradeToMarkdownAt`/`sendGroupMsgUpgraded`，含 at 的群纯文本消息升级 `msg_type=2` markdown）、`structs/structs.go`、`config/config.go`、`template/config_template.go`、根目录 `config.yml`、`gensokyo-config-gen.html`（新增「⑧ 真实 At」卡片）、`readme.md`
 >   - 变更内容：见上方「新增能力 7」；新增配置项 `at_markdown`（默认 `false`）；官方文本链 at 标签 `<qqbot-at-user id="openid"/>` 纯文本实测不渲染，改用 markdown 消息按文档"最新格式"注入试渲染真 at；富媒体（图文/语音等）与超长消息不升级，且会把已注入的 at 标签**还原为 @昵称 文本**（防止原始标签当正文发出）；2026-08-19 实测 `<at id="openid"></at>`（频道模板语法）在群聊自定义 markdown 同样不渲染，故注入格式由 `<at>` 改为 `<qqbot-at-user>` 再实测
+> - **2026-08-19**（DanielToyama）：fakeReply 假回复前缀真实 at 升级 + `at_markdown` 默认开启
+>   - 修改文件：`handlers/message_parser.go`（`buildFakeReplyPrefix` 新增 `mdAt` 参数、`mdAtForFakeReply` 辅助函数）、`config/config.go`（`GetAtMarkdown` 默认 `true`）、`structs/structs.go`、`template/config_template.go`、根目录 `config.yml`、`gensokyo-config-gen.html`（「⑧ 真实 At」默认勾选开启）、`readme.md`
+>   - 变更内容：`at_markdown` **默认开启**；fakeReply 假回复前缀"回复 @昵称"在群消息 + `at_markdown` 开启时升级为官方文本链真实 at 标签 `<qqbot-at-user id="openid"/>`（openid 从 msgmap 记录的 `UserID` 经 idmap 反查），整条消息随 markdown 升级发送，群里渲染真实"回复 @某某"；**私聊/频道无 markdown-at 升级链路**（会显示原始标签），回退为文本 @昵称；**图文+at 富媒体消息**维持原样（官方富媒体通道不渲染 at 标签，at 还原为 @昵称，不做公网图合并）
 > - **2026-08-18**（DanielToyama）：入群审核 comment 增强 + 空值留痕（对应用户反馈"审核内容变成了空"）
 >   - 修改文件：`Processor/ProcessGroupJoinRequest.go`、`handlers/group_mgmt_common.go`、`handlers/get_group_join_request_list.go`、`readme.md`
 >   - 变更内容：申请词 `comment` 支持**问答验证**（`verify_info.method=admin_review_qa`，官方不回填 `verify_message`，问题和回答在 `verify_info.review_qa_list`）——拼接为 `问:… 答:…` 展示；**`get_group_join_request_list` 每条申请附加 `comment` 增强字段**（原字段不变）；`comment` 最终仍为空时打印**留痕日志**（含完整 `verify_info`），下次复发即可区分"申请人没填验证消息 / 官方事件字段缺失 / 偶发丢字段"

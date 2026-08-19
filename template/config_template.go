@@ -157,7 +157,7 @@ settings:
   downtime_message_enabled : true   #维护通知总开关: true=WS全部掉线时按规则回复维护文案, false=完全不回复
   downtime_cooldown : 10            #维护回复冷却时间,单位分钟: 群聊@/频道@等一对多场景,同一群/频道+同一用户冷却期内最多回一次; 0=不冷却; 私聊/C2C为1对1不受影响,每条都回
   fake_reply : true                 #fakeReply假回复开关: 官方协议不支持reply引用段, 开启后应用端发send_*_msg携带reply引用段时,文本伪造为"回复 @昵称\n————\n原内容"(原内容来自本机msgmap.db持久化的历史消息记录,查不到则跳过); false=忽略reply段按普通消息发送
-  at_markdown : false               #真实at(markdown)开关: 官方文本链<qqbot-at-user id="openid"/>纯文本实测不渲染(显示原文), 频道模板<at id="openid">群聊实测也不渲染; 官方开发者实测markdown消息可渲染真at; 开启后含at的群纯文本消息升级为markdown消息(msg_type=2)发送, at按文档"最新格式"<qqbot-at-user id="openid"/>注入; false=维持"@昵称"文本(默认)
+  at_markdown : true                #真实at(markdown)开关(默认开启): 官方文本链<qqbot-at-user id="openid"/>纯文本实测不渲染(显示原文), 频道模板<at id="openid">群聊实测也不渲染; 官方开发者实测markdown消息可渲染真at; 开启后含at的群纯文本消息升级为markdown消息(msg_type=2)发送, at按文档"最新格式"<qqbot-at-user id="openid"/>注入, fakeReply伪回复的"@昵称"同步升级为真实at; false=维持"@昵称"文本
   memory_msgid : false              #当你的机器人单日信息量超过100万,就需要高性能SSD或者开启这个选项了.部分依赖msgid的功能可能会受影响(如delete_msg)
   threads_ret_msg : false           #异步,并发发送回执信息 仅ws可用.
   no_ret_msg : false                #当你的信息量达到1000万/天的时候,并且你的业务不需要获取回调信息,此时直接屏蔽是最好的选择,可以提升50%收发性能. 需应用端适配!!!
