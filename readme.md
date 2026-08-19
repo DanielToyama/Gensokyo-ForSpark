@@ -88,6 +88,9 @@
 > - **2026-08-18**（DanielToyama）：新增 FakeReply 假回复（OneBot v11 `reply` 引用段的文本伪造）
 >   - 修改文件：新增 `msgmap/msgmap.go`（message_id→发送者 持久化，bbolt `msgmap.db`）；`main.go`（初始化/关闭）、`Processor/ProcessGroupMessage.go`、`Processor/ProcessC2CMessage.go`、`Processor/ProcessGuildATMessage.go`（收到消息时记录）、`handlers/message_parser.go`（`reply` 段解析与伪造渲染）、`structs/structs.go`、`config/config.go`、`template/config_template.go`、根目录 `config.yml`、`gensokyo-config-gen.html`（新增「⑦ 假回复」卡片）、`readme.md`
 >   - 变更内容：见上方「新增能力 6」；新增配置项 `fake_reply`（默认 `true`）；伪造格式 `回复 @昵称\n————\n原内容`，原内容优先取 reply 段的 `data.text`，否则取 msgmap 持久化的原文
+> - **2026-08-18**（DanielToyama）：入群审核 comment 增强 + 空值留痕（对应用户反馈"审核内容变成了空"）
+>   - 修改文件：`Processor/ProcessGroupJoinRequest.go`、`handlers/group_mgmt_common.go`、`handlers/get_group_join_request_list.go`、`readme.md`
+>   - 变更内容：申请词 `comment` 支持**问答验证**（`verify_info.method=admin_review_qa`，官方不回填 `verify_message`，问题和回答在 `verify_info.review_qa_list`）——拼接为 `问:… 答:…` 展示；**`get_group_join_request_list` 每条申请附加 `comment` 增强字段**（原字段不变）；`comment` 最终仍为空时打印**留痕日志**（含完整 `verify_info`），下次复发即可区分"申请人没填验证消息 / 官方事件字段缺失 / 偶发丢字段"
 > - **2026-08-18**（DanielToyama）：发布物压缩方式与 CI 对齐（workflow 写法未改动）
 >   - 本地 `gensokyo.exe` 改用与 `.github/workflows/cross_compile.yml` 相同的压缩方式：`-s -w` 构建后 `upx --best`，32,862,208 B → 9,634,304 B（29.3%，与原 workflow Release 产物体积一致）
 > - **2026-08-18**（DanielToyama）：修复 Release workflow 产物丢失（`.github/workflows/cross_compile.yml`）

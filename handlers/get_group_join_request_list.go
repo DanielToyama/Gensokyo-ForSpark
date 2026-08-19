@@ -32,7 +32,16 @@ func HandleGetGroupJoinRequestList(client callapi.Client, api openapi.OpenAPI, a
 		return "", nil
 	}
 
-	resp := groupResponse(list, message)
+	// [DanielToyama] 每条申请附加 comment 增强字段(问答验证/验证消息统一取展示文本), 原字段保持不变
+	items := make([]map[string]interface{}, 0, len(list.List))
+	for _, jr := range list.List {
+		items = append(items, joinRequestToMap(jr))
+	}
+	enriched := map[string]interface{}{
+		"list":        items,
+		"next_cursor": list.NextCursor,
+	}
+	resp := groupResponse(enriched, message)
 	if err := client.SendMessage(resp); err != nil {
 		mylog.Printf("get_group_join_request_list: 发送响应失败: %v", err)
 	}

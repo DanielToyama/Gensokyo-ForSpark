@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hoshinonyaruko/gensokyo/config"
+	"github.com/hoshinonyaruko/gensokyo/handlers"
 	"github.com/hoshinonyaruko/gensokyo/idmap"
 	"github.com/hoshinonyaruko/gensokyo/mylog"
 	"github.com/tencent-connect/botgo/dto"
@@ -73,12 +74,19 @@ func (p *Processors) ProcessGroupJoinRequest(data *dto.GroupJoinRequestEvent) er
 	// [新增] 缓存入群申请 id -> (群,成员) openid, 供 set_group_add_request 只传 flag 时审批
 	idmap.StoreJoinRequestV2(data.JoinRequestID, data.GroupOpenID, data.MemberOpenID)
 
-	comment := ""
+	// [DanielToyama] 申请词(comment)统一走 handlers.BuildJoinRequestComment:
+	// 问答验证(admin_review_qa)官方不回填 verify_message, 问题/回答在 review_qa_list, 一并拼成展示文本;
+	// invited 兜底"被邀请入群"; comment 最终仍为空时打留痕日志(区分"申请人没填/官方字段缺失/偶发")
+	verifyMethod, verifyMessage := "", ""
+	var qaList []dto.ReviewQA
 	if data.VerifyInfo != nil {
-		comment = data.VerifyInfo.VerifyMessage
+		verifyMethod = data.VerifyInfo.Method
+		verifyMessage = data.VerifyInfo.VerifyMessage
+		qaList = data.VerifyInfo.ReviewQAList
 	}
-	if comment == "" && data.ApplySource == "invited" {
-		comment = "被邀请入群"
+	comment := handlers.BuildJoinRequestComment(verifyMethod, verifyMessage, data.ApplySource, qaList)
+	if comment == "" {
+		mylog.Printf("入群申请 flag[%v] 用户[%v] 验证消息为空: apply_source[%v] verify_info[%+v]", data.JoinRequestID, data.Username, data.ApplySource, data.VerifyInfo)
 	}
 
 	req := OnebotGroupJoinRequest{
