@@ -96,7 +96,7 @@
 >   - 变更内容：见上方「新增能力 6」；新增配置项 `fake_reply`（默认 `true`）；伪造格式 `回复 @昵称\n————\n原内容`，原内容优先取 reply 段的 `data.text`，否则取 msgmap 持久化的原文
 > - **2026-08-18**（DanielToyama）：新增真实 At（Markdown）AtMarkdown（实验功能）
 >   - 修改文件：`handlers/message_parser.go`（`transformMessageTextAt` 产出 `<at id="openid"></at>`）、`handlers/send_group_msg.go`（`maybeUpgradeToMarkdownAt`/`sendGroupMsgUpgraded`，含 at 的群纯文本消息升级 `msg_type=2` markdown）、`structs/structs.go`、`config/config.go`、`template/config_template.go`、根目录 `config.yml`、`gensokyo-config-gen.html`（新增「⑧ 真实 At」卡片）、`readme.md`
->   - 变更内容：见上方「新增能力 7」；新增配置项 `at_markdown`（默认 `false`）；官方文本链 at 标签 `<qqbot-at-user id="openid"/>` 实测不渲染，改用 markdown 消息内嵌 `<at id="openid"></at>` 试渲染真 at；富媒体/超长消息不升级
+>   - 变更内容：见上方「新增能力 7」；新增配置项 `at_markdown`（默认 `false`）；官方文本链 at 标签 `<qqbot-at-user id="openid"/>` 实测不渲染，改用 markdown 消息内嵌 `<at id="openid"></at>` 试渲染真 at；富媒体（图文/语音等）与超长消息不升级，且会把已注入的 at 标签**还原为 @昵称 文本**（防止原始标签当正文发出）
 > - **2026-08-18**（DanielToyama）：入群审核 comment 增强 + 空值留痕（对应用户反馈"审核内容变成了空"）
 >   - 修改文件：`Processor/ProcessGroupJoinRequest.go`、`handlers/group_mgmt_common.go`、`handlers/get_group_join_request_list.go`、`readme.md`
 >   - 变更内容：申请词 `comment` 支持**问答验证**（`verify_info.method=admin_review_qa`，官方不回填 `verify_message`，问题和回答在 `verify_info.review_qa_list`）——拼接为 `问:… 答:…` 展示；**`get_group_join_request_list` 每条申请附加 `comment` 增强字段**（原字段不变）；`comment` 最终仍为空时打印**留痕日志**（含完整 `verify_info`），下次复发即可区分"申请人没填验证消息 / 官方事件字段缺失 / 偶发丢字段"

@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -2464,22 +2465,43 @@ func maybeUpgradeToMarkdownAt(groupMessage *dto.MessageToCreate) *dto.MessageToC
 	if !config.GetAtMarkdown() {
 		return groupMessage
 	}
-	if groupMessage == nil || groupMessage.Markdown != nil || groupMessage.MsgType != 0 {
+	if groupMessage == nil {
 		return groupMessage
 	}
 	if !strings.Contains(groupMessage.Content, "<at id=\"") || !strings.Contains(groupMessage.Content, "</at>") {
 		return groupMessage
 	}
-	// markdown 自定义内容长度上限兜底, 超出则保持文本发送(文本模式会显示 @昵称)
-	if len(groupMessage.Content) > 2800 {
-		mylog.Printf("at_markdown: 消息过长(%v字符), 保持文本发送", len(groupMessage.Content))
+	// [DanielToyama] 富媒体/非纯文本消息(图文、嵌入markdown、超长): markdown 无法携带图片等,
+	// 把 parse 阶段已注入的 <at id="openid"></at> 标签还原为 @昵称 文本, 避免把原始标签当正文发出
+	if groupMessage.MsgType != 0 || groupMessage.Markdown != nil || groupMessage.Media.FileInfo != "" || len(groupMessage.Content) > 2800 {
+		groupMessage.Content = replaceMarkdownAtWithNick(groupMessage.Content)
 		return groupMessage
 	}
 	groupMessage.MsgType = 2
 	groupMessage.Markdown = &dto.Markdown{Content: groupMessage.Content}
 	groupMessage.Content = ""
-	mylog.Printf("at_markdown: 升级为 markdown 消息发送, content[%.60s]", groupMessage.Markdown.Content)
+	mylog.Printf("at_markdown: 升级为 markdown 消息发送")
 	return groupMessage
+}
+
+// [DanielToyama] replaceMarkdownAtWithNick 把 <at id="openid"></at> 标签还原为 @昵称 文本
+// (昵称缓存优先; 昵称未知时 @Openid+前8位; 再不行移除), 与 transformMessageTextAt 的文本兜底一致
+func replaceMarkdownAtWithNick(content string) string {
+	re := regexp.MustCompile(`<at id="([^"]+)"></at>`)
+	return re.ReplaceAllStringFunc(content, func(m string) string {
+		sub := re.FindStringSubmatch(m)
+		if len(sub) < 2 {
+			return m
+		}
+		realUserID := sub[1]
+		if nick := idmap.RetrieveUsernameByOpenID(realUserID); nick != "" {
+			return "@" + nick
+		}
+		if len(realUserID) >= 8 {
+			return "@Openid" + realUserID[:8]
+		}
+		return ""
+	})
 }
 
 // [DanielToyama] 群文本消息发送统一入口: 发送前做 at_markdown 升级(富媒体消息不经过这里)
