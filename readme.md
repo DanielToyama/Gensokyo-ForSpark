@@ -105,6 +105,9 @@
 > - **2026-08-19**（DanielToyama）：Release workflow UPX 二进制统一用 linux amd64 版（上门修复的 win64 版 bug）
 >   - 修改文件：`.github/workflows/cross_compile.yml`、`readme.md`
 >   - 变更内容：一次修复在 `matrix.os=windows` 时下载 `upx-4.2.4-win64.zip` 并在 runner 上执行——GitHub runner 是 **Linux 环境，无法运行 Windows 的 PE 程序**，windows 目标任务直接失败；linux amd64 版 UPX **同时支持压缩 PE(.exe)与 ELF**，故所有目标统一下载 linux amd64 版 UPX 并直连 GitHub Release（不走 apt 镜像），apt 仅作兜底（带重试上限）
+> - **2026-08-20**（DanielToyama）：修复出站消息 `face` 段被静默丢弃（官方 bot 发不了数字表情）
+>   - 修改文件：`handlers/face.go`、`handlers/message_parser.go`、`readme.md`
+>   - 变更内容：`parseMessageContent` 的段转换原本没有 `case "face"`，表情段落入 default 被丢弃（日志 `Unhandled segment type: face`），表现为"发出去表情没了"；新增常用 QQ 表情 id → Unicode emoji 映射（官方通道可发、QQ 客户端渲染为原生表情），未收录 id 回退为可读占位 `[表情:<id>]`，消息不再丢内容
 > - **2026-08-20**（DanielToyama）：新增野鸡 qlogo 兼容路由 `GET /g?b=qq&nk=数字ID&s=尺寸`（内部 HTTP 服务）
 >   - 修改文件：`main.go`、`server/avatarProxy.go`、`readme.md`
 >   - 变更内容：部分客户端/前端习惯用 `https://q1.qlogo.cn/g?b=qq&nk=<QQ号码>&s=640` 取头像，但官方 bot 无 QQ 号（出站 avatar 是 `q.qlogo.cn/qqapp/<appid>/<openid>/640`）；新增路由把应用端视角的"虚构QQ号"（idmap 数字行ID）反查为 openid。**默认代理模式**：由 Gensokyo 后台下载官方头像后直接返回图片字节流（透传 Content-Type，客户端无需理解重定向，覆盖 axios/浏览器/官方服务器/不跟随 302 的客户端等全部场景）；显式 `&redirect=1` 时才 302 到官方地址。示例：`http://<gsk地址>:<端口>/g?b=qq&nk=800512121&s=640`；`b` 非 qq / nk、s 非纯数字 返回 400，反查不到返回 404，头像源不可达返回 502

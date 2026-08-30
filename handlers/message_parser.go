@@ -739,6 +739,11 @@ func parseMessageContent(paramsMessage callapi.ParamsContent, message callapi.Ac
 				}
 				messageText += avatarCQCode
 
+			case "face":
+				// [DanielToyama] 官方bot发不了数字表情, face id -> emoji 文本(未收录回退占位)
+				faceID, _ := segmentMap["data"].(map[string]interface{})["id"].(string)
+				segmentContent = faceIDToEmoji(faceID)
+
 			case "markdown":
 				mdContent, ok := segmentMap["data"].(map[string]interface{})["data"]
 				if ok {
@@ -881,6 +886,11 @@ func parseMessageContent(paramsMessage callapi.ParamsContent, message callapi.Ac
 				avatarCQCode, _ = GetAvatarCQCode(paramsMessage.GroupID.(string), qqNumber)
 			}
 			messageText += avatarCQCode
+
+		case "face":
+			// [DanielToyama] 官方bot发不了数字表情, face id -> emoji 文本(未收录回退占位)
+			faceID, _ := message["data"].(map[string]interface{})["id"].(string)
+			messageText += faceIDToEmoji(faceID)
 
 		case "markdown":
 			mdContent, ok := message["data"].(map[string]interface{})["data"]
