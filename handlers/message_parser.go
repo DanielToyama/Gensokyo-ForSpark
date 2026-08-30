@@ -740,7 +740,7 @@ func parseMessageContent(paramsMessage callapi.ParamsContent, message callapi.Ac
 				messageText += avatarCQCode
 
 			case "face":
-				// [DanielToyama] 官方bot发不了数字表情, face id -> emoji 文本(未收录回退占位)
+				// [DanielToyama] face id -> 官方系统表情 <emoji:id> 内嵌标签(官方文档 emoji/model.html)
 				faceID, _ := segmentMap["data"].(map[string]interface{})["id"].(string)
 				segmentContent = faceIDToEmoji(faceID)
 
@@ -888,7 +888,7 @@ func parseMessageContent(paramsMessage callapi.ParamsContent, message callapi.Ac
 			messageText += avatarCQCode
 
 		case "face":
-			// [DanielToyama] 官方bot发不了数字表情, face id -> emoji 文本(未收录回退占位)
+			// [DanielToyama] face id -> 官方系统表情 <emoji:id> 内嵌标签(官方文档 emoji/model.html)
 			faceID, _ := message["data"].(map[string]interface{})["id"].(string)
 			messageText += faceIDToEmoji(faceID)
 
