@@ -105,9 +105,10 @@
 > - **2026-08-19**（DanielToyama）：Release workflow UPX 二进制统一用 linux amd64 版（上门修复的 win64 版 bug）
 >   - 修改文件：`.github/workflows/cross_compile.yml`、`readme.md`
 >   - 变更内容：一次修复在 `matrix.os=windows` 时下载 `upx-4.2.4-win64.zip` 并在 runner 上执行——GitHub runner 是 **Linux 环境，无法运行 Windows 的 PE 程序**，windows 目标任务直接失败；linux amd64 版 UPX **同时支持压缩 PE(.exe)与 ELF**，故所有目标统一下载 linux amd64 版 UPX 并直连 GitHub Release（不走 apt 镜像），apt 仅作兜底（带重试上限）
+> - **2026-08-31**（DanielToyama）：face 表情段出站 —— 官方通道不支持,降级为可读占位(终稿)
+>   - 修改文件：`handlers/face.go`、`handlers/send_group_msg.go`、`readme.md`
+>   - 变更内容：官方 bot 能力表没有"表情作为消息内容"这一项(只有表情表态=给消息点赞)。经真群实测三条路全部证伪：`<emoji:ID>` 纯文本显示原文、`<emoji:ID>` markdown 通道不渲染、Unicode emoji 字符方案行不通；最终 face 段降级为 `[表情:<id>]` 占位（不丢内容、不中断后续段、不触发 markdown 升级）。`maybeUpgradeToMarkdownAt` 恢复仅处理 at 标签
 > - **2026-08-20**（DanielToyama）：修复出站消息 `face` 段被静默丢弃（官方 bot 发不了数字表情）
->   - 修改文件：`handlers/face.go`、`handlers/message_parser.go`、`readme.md`
->   - 变更内容：`parseMessageContent` 的段转换原本没有 `case "face"`，表情段落入 default 被丢弃（日志 `Unhandled segment type: face`），表现为"发出去表情没了"；新增 `faceIDToEmoji`：face id → 官方系统表情内嵌标签 `<emoji:ID>`（仅 type=1 系统表情，官方文档 https://bot.q.qq.com/wiki/develop/api-v2/openapi/emoji/model.html，与 botgo `dto.Emoji` 一致），QQ 客户端渲染为原生系统表情；非纯数字 id（动态/魔法表情，官方通道不支持）回退为可读占位 `[表情:<id>]`，消息不再丢内容
 > - **2026-08-20**（DanielToyama）：新增野鸡 qlogo 兼容路由 `GET /g?b=qq&nk=数字ID&s=尺寸`（内部 HTTP 服务）
 >   - 修改文件：`main.go`、`server/avatarProxy.go`、`readme.md`
 >   - 变更内容：部分客户端/前端习惯用 `https://q1.qlogo.cn/g?b=qq&nk=<QQ号码>&s=640` 取头像，但官方 bot 无 QQ 号（出站 avatar 是 `q.qlogo.cn/qqapp/<appid>/<openid>/640`）；新增路由把应用端视角的"虚构QQ号"（idmap 数字行ID）反查为 openid。**默认代理模式**：由 Gensokyo 后台下载官方头像后直接返回图片字节流（透传 Content-Type，客户端无需理解重定向，覆盖 axios/浏览器/官方服务器/不跟随 302 的客户端等全部场景）；显式 `&redirect=1` 时才 302 到官方地址。示例：`http://<gsk地址>:<端口>/g?b=qq&nk=800512121&s=640`；`b` 非 qq / nk、s 非纯数字 返回 400，反查不到返回 404，头像源不可达返回 502
