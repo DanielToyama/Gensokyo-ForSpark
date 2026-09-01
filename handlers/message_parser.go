@@ -1304,12 +1304,30 @@ func RevertTransformedText(data interface{}, msgtype string, api openapi.OpenAPI
 
 	// [新增] 官方群消息里的表情是 <faceType=1,faceId="264",ext="..."> 内嵌标记(LLOneBot等实现
 	// 会转成 [CQ:face,id=264]), 这里同样转为 CQ 码, 使 raw_message 与其他 OB11 实现行为一致;
-	// 不管 faceType 是几(系统表情/动态表情/贴纸), 一律按 faceId 转成 face
-	faceRe := regexp.MustCompile(`<faceType=\d+,faceId="([^"]+)"[^>]*>`)
+	// 系统表情/动态表情按 faceId 转 face; faceType=4(表情包)无图片数据, 降级为名字文本;
+	// faceType=6(自定义表情)跳过——真实内容是附件图片(attachment 已单独成 image 段)
+	faceRe := regexp.MustCompile(`<faceType=(\d+),faceId="([^"]*)"(?:,(?:ext="([^"]*)"|[^>]*))?>`)
 	messageText = faceRe.ReplaceAllStringFunc(messageText, func(m string) string {
 		submatches := faceRe.FindStringSubmatch(m)
-		if len(submatches) > 1 {
-			return "[CQ:face,id=" + submatches[1] + "]"
+		if len(submatches) > 2 {
+			ft, id := submatches[1], submatches[2]
+			ext := ""
+			if len(submatches) > 3 {
+				ext = submatches[3]
+			}
+			if ft == "4" {
+				// 表情包商店: 无图片URL, 用 ext 里的名字文本兜底(与 LLOneBot 的 summary 一致)
+				name := decodeFaceExtText(ext)
+				if name != "" {
+					return name
+				}
+				return ""
+			}
+			if ft == "6" {
+				// 自定义表情: 标签直接移除, 图片附件单独成段
+				return ""
+			}
+			return "[CQ:face,id=" + id + "]"
 		}
 		return m
 	})
@@ -1563,7 +1581,13 @@ func RevertTransformedText(data interface{}, msgtype string, api openapi.OpenAPI
 				url = "http://" + attachment.URL // 默认使用 http，也可以根据需要改为 https
 			}
 
-			imageCQ := "[CQ:image,file=" + md5name + ".image,subType=0,url=" + url + "]"
+			// [DanielToyama] 表情判断: content 含 faceType=4/6(工具包/自定义表情)时附件为动画表情, subType=1(与 LLOneBot 一致)
+			subType := "0"
+			if strings.Contains(msg.Content, `<faceType=4,`) || strings.Contains(msg.Content, `<faceType=6,`) {
+				subType = "1"
+			}
+
+			imageCQ := "[CQ:image,file=" + md5name + ".image,subType=" + subType + ",url=" + url + "]"
 			messageText += imageCQ
 		}
 	}
@@ -1588,6 +1612,25 @@ func processMessageText(messageText string, aliases []string) string {
 		}
 	}
 	return messageText
+}
+
+// [DanielToyama] 将收到的官方 face 标签里的 ext 字段(base64 JSON, 形如 {"text":"[跳舞]"})
+// 解码出名字文本, 用于 faceType=4 表情包商店表情的降级展示(官方事件无图片URL, 无法成图)
+func decodeFaceExtText(ext string) string {
+	if ext == "" {
+		return ""
+	}
+	decoded, err := base64.StdEncoding.DecodeString(ext)
+	if err != nil {
+		return ""
+	}
+	var payload struct {
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(decoded, &payload); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(payload.Text)
 }
 
 // 将收到的data.content转换为message segment todo,群场景不支持受图片,频道场景的图片可以拼一下
@@ -1620,17 +1663,25 @@ func ConvertToSegmentedMessage(data interface{}) []map[string]interface{} {
 	var messageSegments []map[string]interface{}
 	var imageSegments []map[string]interface{}
 
+	// [DanielToyama] 表情判断: 若 content 含 faceType=4(表情包)/6(自定义表情)标签,
+	// 说明此消息是动画表情, 图片附件应标记 subType=1(与 LLOneBot 一致); 否则普通图片 subType=0
+	stickerEmoji := strings.Contains(msg.Content, `<faceType=4,`) || strings.Contains(msg.Content, `<faceType=6,`)
+
 	// 处理Attachments字段来构建图片消息
 	for _, attachment := range msg.Attachments {
 		imageFileMD5 := attachment.FileName
 		for _, ext := range []string{"{", "}", ".png", ".jpg", ".gif", "-"} {
 			imageFileMD5 = strings.ReplaceAll(imageFileMD5, ext, "")
 		}
+		subType := "0"
+		if stickerEmoji {
+			subType = "1"
+		}
 		imageSegment := map[string]interface{}{
 			"type": "image",
 			"data": map[string]interface{}{
 				"file":    imageFileMD5 + ".image",
-				"subType": "0",
+				"subType": subType,
 				"url":     attachment.URL,
 			},
 		}
@@ -1654,8 +1705,10 @@ func ConvertToSegmentedMessage(data interface{}) []map[string]interface{} {
 	// [修复] 官方群消息的 @ 是 <@openid>(实测环境; 兼容旧 <@!数字> 与频道 <@!openid>),
 	// 表情是 <faceType=1,faceId="264",ext="..."> 内嵌标记(LLOneBot 等实现会转成 face 段);
 	// 按原文位置切分 content, 生成顺序正确的 text/at/face 段(符合 onebot v11 消息段规范 array.md)
-	tagRe := regexp.MustCompile(`<@!?\d+>|<@!?[0-9a-fA-F]{32}>|<faceType=\d+,faceId="[^"]+"[^>]*>`)
-	faceIdRe := regexp.MustCompile(`faceId="([^"]+)"`)
+	tagRe := regexp.MustCompile(`<@!?\d+>|<@!?[0-9a-fA-F]{32}>|<faceType=\d+,faceId="[^"]*"[^>]*>`)
+	faceIdRe := regexp.MustCompile(`faceId="([^"]*)"`)
+	faceTypeRe := regexp.MustCompile(`faceType=(\d+)`)
+	faceExtRe := regexp.MustCompile(`ext="([^"]*)"`)
 	cursor := 0
 	for _, loc := range tagRe.FindAllStringIndex(msg.Content, -1) {
 		// 标签前的文本
@@ -1667,8 +1720,32 @@ func ConvertToSegmentedMessage(data interface{}) []map[string]interface{} {
 		}
 		tag := msg.Content[loc[0]:loc[1]]
 		if strings.HasPrefix(tag, "<faceType=") {
-			// 表情标记: 不管 faceType 是几, 一律按 faceId 生成 face 段
-			if fm := faceIdRe.FindStringSubmatch(tag); len(fm) > 1 {
+			// 表情标记: 系统表情按 faceId 生成 face 段;
+			// faceType=4(表情包)无图片数据, 降级为名字文本段;
+			// faceType=6(自定义表情)跳过——真实内容是附件图片(attachment 已单独生成 image 段)
+			ftMatch := faceTypeRe.FindStringSubmatch(tag)
+			if len(ftMatch) > 1 {
+				switch ftMatch[1] {
+				case "4":
+					// 表情包商店: 无图片URL, 用 ext 名字文本兜底(与 LLOneBot summary 一致)
+					name := ""
+					if em := faceExtRe.FindStringSubmatch(tag); len(em) > 1 {
+						name = decodeFaceExtText(em[1])
+					}
+					if name != "" {
+						messageSegments = append(messageSegments, map[string]interface{}{
+							"type": "text",
+							"data": map[string]interface{}{"text": name},
+						})
+					}
+					cursor = loc[1]
+					continue
+				case "6":
+					cursor = loc[1]
+					continue
+				}
+			}
+			if fm := faceIdRe.FindStringSubmatch(tag); len(fm) > 1 && fm[1] != "" {
 				messageSegments = append(messageSegments, map[string]interface{}{
 					"type": "face",
 					"data": map[string]interface{}{"id": fm[1]},
