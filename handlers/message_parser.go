@@ -181,6 +181,10 @@ func SendResponse(client callapi.Client, err error, message *callapi.ActionMessa
 		response.Data.MessageID = int(messageID64)
 		// 发送成功 增加今日发信息数
 		botstats.RecordMessageSent()
+		// [新增] 出站消息入库: 让标准 delete_msg(仅传 message_id)也能撤回机器人自己发的消息
+		if resp.Message != nil {
+			recordOutboundMsg(message, resp.Message.ID, messageID64, "")
+		}
 		//  是否自动撤回
 		if echoStr, ok := message.Echo.(string); ok {
 			msg_on_touch := echo.GetMsgIDv3(config.GetAppIDStr(), echoStr)
@@ -273,6 +277,9 @@ func SendResponseSB(client callapi.Client, err error, message *callapi.ActionMes
 	if resp != nil {
 
 		response.Data.MessageID = resp.Message.ID
+
+		// [新增] 出站消息入库(string_ob11 模式: 应用端拿到的就是官方 id)
+		recordOutboundMsg(message, resp.Message.ID, 0, "")
 
 	} else {
 		// Default ID handling
@@ -382,6 +389,8 @@ func SendGuildResponse(client callapi.Client, err error, message *callapi.Action
 		response.Data.MessageID = int(messageID64)
 		// 发送成功 增加今日发信息数
 		botstats.RecordMessageSent()
+		// [新增] 出站消息入库: 让标准 delete_msg(仅传 message_id)也能撤回机器人自己发的消息
+		recordOutboundMsg(message, resp.ID, messageID64, "")
 	} else {
 		// Default ID handling
 		response.Data.MessageID = 123
@@ -448,6 +457,10 @@ func SendC2CResponse(client callapi.Client, err error, message *callapi.ActionMe
 		response.Data.MessageID = int(messageID64)
 		// 发送成功 增加今日发信息数
 		botstats.RecordMessageSent()
+		// [新增] 出站消息入库: 让标准 delete_msg(仅传 message_id)也能撤回机器人自己发的消息
+		if resp.Message != nil {
+			recordOutboundMsg(message, resp.Message.ID, messageID64, "")
+		}
 	} else {
 		// Default ID handling
 		response.Data.MessageID = 123
@@ -511,6 +524,8 @@ func SendGuildPrivateResponse(client callapi.Client, err error, message *callapi
 			}
 		}
 		response.Data.MessageID = int(messageID64)
+		// [新增] 出站消息入库: 频道私信把真实 guild_id 一起记下来(delete_msg 的 guild 分支直接用它)
+		recordOutboundMsg(message, resp.ID, messageID64, guildID)
 	} else {
 		// Default ID handling
 		response.Data.MessageID = 123

@@ -38,3 +38,7 @@
 32. `/send_private_msg_sse` - send_private_msg_sse.go
 33. `/set_group_ban` - set_group_ban.go
 34. `/set_group_whole_ban` - set_group_whole_ban.go
+
+### 相关文档
+
+- 撤回消息（`delete_msg` 完整用法、四种会话对照、常见坑）：[撤回消息.md](./撤回消息.md)

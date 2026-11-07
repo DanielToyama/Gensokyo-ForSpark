@@ -11,6 +11,9 @@ package msgmap
 // 把回复文本伪造为 "回复 @昵称\n————\n原内容"。
 //
 // 所有方法在 db 未初始化时静默失败(记录日志), 与 botstats 同款容错。
+//
+// 2026-09-02 新增用途(delete_msg 撤自己的消息): 出站发送成功后也入表(RecordOutbound),
+// 见 RecordOutbound 注释。
 
 import (
 	"encoding/json"
@@ -30,12 +33,13 @@ const entryTTL = 7 * 24 * time.Hour
 
 // MsgInfo 一条消息的发送者信息(以应用端可见的 message_id 为键)
 type MsgInfo struct {
-	UserID   string `json:"user_id"`  // 应用端可见的发送者ID
-	Nickname string `json:"nickname"` // 发送者QQ昵称(官方 username / 频道 member.nick)
-	GroupID  string `json:"group_id"` // 群/频道/私聊对象ID(应用端可见)
-	MsgType  string `json:"msg_type"` // group / group_private / guild
-	Content  string `json:"content"`  // 消息文本(经@转换后的可读文本)
-	Time     int64  `json:"time"`     // 记录时间(Unix秒)
+	UserID   string `json:"user_id"`            // 应用端可见的发送者ID
+	Nickname string `json:"nickname"`           // 发送者QQ昵称(官方 username / 频道 member.nick)
+	GroupID  string `json:"group_id"`           // 群/频道/私聊对象ID(应用端可见)
+	MsgType  string `json:"msg_type"`           // group / group_private / guild / guild_private
+	Content  string `json:"content"`            // 消息文本(经@转换后的可读文本)
+	Time     int64  `json:"time"`               // 记录时间(Unix秒)
+	Outbound bool   `json:"outbound,omitempty"` // true=机器人自己发出的消息(入站记录为 false)
 }
 
 // InitializeDB 打开数据库并清理过期条目
@@ -78,6 +82,18 @@ func RecordMessage(keys []string, info MsgInfo) {
 		}
 		return nil
 	})
+}
+
+// RecordOutbound 记录一条「机器人自己发出的」消息(出站标记), keys 为该消息在应用端可见的所有 message_id
+//
+// Modified by DanielToyama on 2026-09-02 (Gensokyo-ForSpark fork)
+// 背景: 标准 onebot v11 的 delete_msg 只传 message_id, 而 RecordMessage 记录的都是「收到的」
+// 消息, 机器人自己发出去的消息从未入表, 导致 delete_msg 反查不到会话对象 ->
+// 四个撤回分支全部跳过、响应却依然 ok(应用端以为撤回成功)。
+// 现在发送成功后把 message_id -> 会话对象(群/私聊/频道)也写进来, 只凭 message_id 即可撤自己的消息。
+func RecordOutbound(keys []string, info MsgInfo) {
+	info.Outbound = true
+	RecordMessage(keys, info)
 }
 
 // LookupMessage 按应用端 message_id 查询发送者信息
