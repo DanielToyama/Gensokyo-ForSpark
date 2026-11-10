@@ -45,6 +45,9 @@ func RetrieveUsernameByOpenID(openid string) string {
 	if openid == "" {
 		return ""
 	}
+	if db == nil {
+		return ""
+	}
 	var username string
 	now := time.Now().Unix()
 	_ = db.Update(func(tx *bbolt.Tx) error {

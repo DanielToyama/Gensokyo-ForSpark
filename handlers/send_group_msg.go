@@ -2468,16 +2468,34 @@ func maybeUpgradeToMarkdownAt(groupMessage *dto.MessageToCreate) *dto.MessageToC
 	if groupMessage == nil {
 		return groupMessage
 	}
-	// 兼容两种注入格式: <at id="..."></at>(频道markdown模板语法, 群聊实测不渲染) 与 <qqbot-at-user id="..." />(文本链文档格式)
-	hasMdAt := strings.Contains(groupMessage.Content, "<at id=\"") || strings.Contains(groupMessage.Content, "<qqbot-at-user id=\"")
-	if !hasMdAt {
+	// 兼容三种注入格式: <at id="..."></at>(频道markdown模板语法, 群聊实测不渲染)、
+	// <qqbot-at-user id="..." />(文本链文档格式)、<qqbot-at-everyone />(2026-10-26 @全体成员)
+	hasUserAt := strings.Contains(groupMessage.Content, "<at id=\"") || strings.Contains(groupMessage.Content, "<qqbot-at-user id=\"")
+	hasEveryone := strings.Contains(groupMessage.Content, "<qqbot-at-everyone")
+	if !hasUserAt && !hasEveryone {
 		return groupMessage
 	}
-	// 富媒体/非纯文本消息(图文、嵌入markdown、超长): markdown 无法携带图片等,
-	// 把 parse 阶段已注入的 at 标签还原为 @昵称 文本, 避免把原始标签当正文发出
-	if groupMessage.MsgType != 0 || groupMessage.Markdown != nil || groupMessage.Media.FileInfo != "" || len(groupMessage.Content) > 2800 {
+	// 富媒体消息(图片/语音/视频): 官方富媒体通道(RichMediaMessage / MsgType=7)不支持 at 标签,
+	// 用户没有 markdown 发图条件时走的就是这条路, 无法真 @。
+	// 把 parse 阶段注入的 at 标签还原为 @昵称 文本(或 @全体成员), 避免原始标签当正文发出。
+	isRichMedia := groupMessage.MsgType == 7 || groupMessage.Media.FileInfo != ""
+	if isRichMedia {
 		groupMessage.Content = replaceMarkdownAtWithNick(groupMessage.Content)
-		mylog.Printf("at_markdown: 富媒体/超长消息, at标签已还原为@昵称 len[%v]", len(groupMessage.Content))
+		mylog.Printf("at_markdown: 富媒体消息不支持at, 已还原为文本 len[%v]", len(groupMessage.Content))
+		return groupMessage
+	}
+	// 已经是 markdown 消息(含 markdown 图片/qqbot-media 资源): markdown 通道支持 at 标签, 保持不变
+	if groupMessage.MsgType == 2 || groupMessage.Markdown != nil {
+		return groupMessage
+	}
+	// 纯文本超长消息无法升级 markdown: 还原 at 标签, 避免原始标签当正文
+	if hasUserAt && len(groupMessage.Content) > 2800 {
+		groupMessage.Content = replaceMarkdownAtWithNick(groupMessage.Content)
+		mylog.Printf("at_markdown: 超长消息, at标签已还原为@昵称 len[%v]", len(groupMessage.Content))
+		return groupMessage
+	}
+	// 纯文本 @全体成员: 官方文本消息原生支持 <qqbot-at-everyone />, 无需升级 markdown
+	if !hasUserAt {
 		return groupMessage
 	}
 	groupMessage.MsgType = 2
@@ -2492,8 +2510,10 @@ func maybeUpgradeToMarkdownAt(groupMessage *dto.MessageToCreate) *dto.MessageToC
 func replaceMarkdownAtWithNick(content string) string {
 	re1 := regexp.MustCompile(`<at id="([^"]+)"></at>`)
 	re2 := regexp.MustCompile(`<qqbot-at-user id="([^"]+)"\s*/>`)
+	re3 := regexp.MustCompile(`<qqbot-at-everyone\s*/>`)
 	content = re1.ReplaceAllStringFunc(content, func(m string) string { return mdAtToNick(re1.FindStringSubmatch(m)) })
 	content = re2.ReplaceAllStringFunc(content, func(m string) string { return mdAtToNick(re2.FindStringSubmatch(m)) })
+	content = re3.ReplaceAllString(content, "@全体成员")
 	return content
 }
 

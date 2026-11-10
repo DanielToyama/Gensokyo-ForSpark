@@ -1048,6 +1048,12 @@ func transformMessageTextAt(messageText string, groupid string) string {
 	replyRE := regexp.MustCompile(`\[CQ:reply,id=\d+\]`)
 	messageText = replyRE.ReplaceAllString(messageText, "")
 
+	// [2026-10-26 官方新特性] 群聊 @全体成员: 官方文本消息/markdown 消息均支持
+	// <qqbot-at-everyone />; OneBot 惯例为 [CQ:at,qq=all](数组段 {"type":"at","data":{"qq":"all"}})
+	// 限制: 机器人需为群管理员, 每个群每天只能发送 1 次(官方服务端校验)
+	everyoneRE := regexp.MustCompile(`(?i)\[CQ:at,qq=(all|everyone)\]`)
+	messageText = everyoneRE.ReplaceAllString(messageText, "<qqbot-at-everyone />")
+
 	// 使用正则表达式来查找所有[CQ:at,qq=数字]的模式
 	re := regexp.MustCompile(`\[CQ:at,qq=(\d+)\]`)
 	messageText = re.ReplaceAllStringFunc(messageText, func(m string) string {

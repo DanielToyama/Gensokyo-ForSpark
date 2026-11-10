@@ -15,9 +15,9 @@ import (
 	"github.com/tencent-connect/botgo/log"
 )
 
-// getAccessTokenURL 取得AccessToken的地址
-// https://bots.qq.com/app/getAppAccessToken
-var getAccessTokenURL = "https://bots.qq.com/app/getAppAccessToken"
+// getAccessTokenURL 取得AccessToken的地址 (官方 API v2 域名, 20260810 起统一为 api.bot.qq.com)
+// https://api.bot.qq.com/app/getAppAccessToken
+var getAccessTokenURL = "https://api.bot.qq.com/app/getAppAccessToken"
 
 // AuthTokenInfo 动态鉴权Token信息
 type AuthTokenInfo struct {

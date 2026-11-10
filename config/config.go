@@ -39,7 +39,7 @@ type CommentBlock struct {
 // 不支持配置热重载的配置项
 var restartRequiredFields = []string{
 	"WsAddress", "WsToken", "ReconnectTimes", "HeartBeatInterval", "LaunchReconnectTimes",
-	"AppID", "Uin", "Token", "ClientSecret", "ShardCount", "ShardID", "UseUin",
+	"AppID", "Uin", "ClientSecret", "ShardCount", "ShardID", "UseUin",
 	"TextIntent",
 	"ServerDir", "Port", "BackupPort", "Lotus", "LotusPassword", "LotusWithoutIdmaps",
 	"WsServerPath", "EnableWsServer", "WsServerToken",

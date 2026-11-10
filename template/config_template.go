@@ -16,8 +16,7 @@ settings:
   app_id: 12345                                      # 你的应用ID
   uin : 0                                            # 你的机器人QQ号,点击机器人资料卡查看  
   use_uin : false                                    # false=使用appid作为机器人id,true=使用机器人QQ号,需设置正确的uin
-  token: "<YOUR_APP_TOKEN>"                          # 你的应用令牌
-  client_secret: "<YOUR_CLIENT_SECRET>"              # 你的客户端密钥
+  client_secret: "<YOUR_CLIENT_SECRET>"              # 你的客户端密钥(用于换取access_token, 唯一鉴权凭据)
   shard_count: 1                    #分片数量 默认1
   shard_id: 0                       #当前分片id 默认从0开始,详细请看 https://bot.q.qq.com/wiki/develop/api/gateway/reference.html
   shard_num: 1                      #接口调用超过频率限制时,如果不想要多开gsk,尝试调大.gsk会尝试连接到n个分片处理信息. n为你所配置的值.与 shard_count和shard_id互不相干.
@@ -115,8 +114,8 @@ settings:
   #指令魔法类
   remove_prefix : false             #是否忽略公域机器人指令前第一个/
   remove_at : false                 #是否忽略公域机器人指令前第一个[CQ:aq,qq=机器人] 场景(公域机器人,但插件未适配at开头)
-  remove_bot_at_group : true        #因为群聊机器人不支持发at,开启本开关会自动隐藏群机器人发出的at(不影响频道场景)
-  add_at_group : false              #自动在群聊指令前加上at,某些机器人写法特别,必须有at才反应时,请打开,默认请关闭(如果需要at,不需要at指令混杂,请优化代码适配群场景,群场景目前没有at概念)
+  remove_bot_at_group : false       #发送侧: 删除发出去的群消息里的普通成员at(at_markdown开启时删真at,关闭时删@昵称文本); @全体成员不受影响
+  add_at_group : false              #自动在群聊指令前加上at,某些机器人写法特别,必须有at才反应时,请打开,默认请关闭(群场景优先用 at_markdown 发真at)
 
   white_prefix_mode : false         #公域 过审用 指令白名单模式开关 如果审核严格 请开启并设置白名单指令 以白名单开头的指令会被通过,反之被拦截
   v_white_prefix_mode : true        #虚拟二级指令(虚拟前缀)的白名单,默认开启,有二级指令帮助的效果

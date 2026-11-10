@@ -1,185 +1,288 @@
-
-
 # Gensokyo-ForSpark
 
-**本项目是基于 [hoshinonyaruko/gensokyo](https://github.com/hoshinonyaruko/gensokyo) 的 GPLv3 分叉版本**，针对 SparkBridge 群服互通场景进行了魔改，由 DanielToyama 独立维护，**不再与原上游同步**。
+**QQ 官方机器人 → OneBot v11 适配层，为 SparkBridge 群服互通场景定制。**
+
+基于 [hoshinonyaruko/gensokyo](https://github.com/hoshinonyaruko/gensokyo) 的 GPLv3 分叉，由 DanielToyama 独立维护。**无需 QQ 小号挂机**，走官方机器人 API 稳定接入；兼容 SparkBridge、Koishi、NoneBot2、Mirai 等 OneBot v11 生态。
+
+> **第一次使用？** 直接打开 **[配置生成器](https://htmlpreview.github.io/?https://raw.githubusercontent.com/DanielToyama/Gensokyo-Forspark/main/gensokyo-config-gen.html)**，3 分钟生成 `config.yml`；再按 [快速开始](#-快速开始3-分钟) 启动即可，不用手写配置。
+
+## 🚀 快速开始（3 分钟）
+
+### 第 1 步：下载程序
+
+1. 打开 [Releases](https://github.com/DanielToyama/Gensokyo-Forspark/releases)
+2. 下载对应平台的文件：
+   - Windows：`gensokyo-windows-amd64.exe`
+   - Linux x86_64：`gensokyo-linux-amd64`
+   - Linux ARM64（如甲骨文/树莓派）：`gensokyo-linux-arm64`
+3. 放到一个**空目录**（例如 `D:\Gensokyo`），确保该目录可读写。
+
+### 第 2 步：用配置生成器生成 config.yml（推荐）
+
+**不用手写配置。** 打开配置生成器：
+
+- **在线版（推荐）**：[打开配置生成器](https://htmlpreview.github.io/?https://raw.githubusercontent.com/DanielToyama/Gensokyo-Forspark/main/gensokyo-config-gen.html)
+- **本地版**：双击仓库根目录的 `gensokyo-config-gen.html`（用浏览器打开）
+- **SparkBridge 内置**：SparkBridge 的「Gensokyo配置生成」页面使用同款
+
+填写页面上的 8 个卡片 → 点 **「生成 config.yml」** → 点 **「下载文件」** 或 **「复制内容」** → 保存到 Gensokyo 程序**同目录**，文件名必须是 `config.yml`。
+
+### 第 3 步：启动
+
+- Windows：双击 `gensokyo-windows-amd64.exe`
+- Linux：
+  ```bash
+  chmod +x gensokyo-linux-amd64
+  ./gensokyo-linux-amd64
+  ```
+- 日志出现监听端口（默认 `15630`）即启动成功
+- SparkBridge 正向 WS 地址填 `ws://127.0.0.1:15630`，密码填配置生成器里的「正向WS令牌」
+
+---
+
+## ⚙️ 配置生成器详解
+
+> 配置生成器只问「群服互通真正需要的」选项，其余全部使用推荐默认值。生成的 `config.yml` 直接替换程序同目录的同名文件即可。
+
+### ① 机器人账号（必填）
+
+| 字段 | 填什么 | 从哪里获取 |
+|---|---|---|
+| 应用ID `app_id` | 机器人应用 ID（纯数字） | QQ 开放平台 → 应用管理 |
+| 客户端密钥 `client_secret` | App Secret（用于换取 access_token，唯一鉴权凭据） | QQ 开放平台 → 开发设置 |
+| 机器人QQ号 `uin` | 机器人资料卡上的 QQ 号 | 手机 QQ 打开机器人资料卡查看 |
+
+> 三个都必填。`app_id` 与 `uin` 不是一回事：前者是开放平台应用 ID，后者是机器人对外展示的 QQ 号。
+>
+> **旧版「应用令牌 token」字段已废弃**：官方 API v2 只需 `app_id` + `client_secret` 动态换取 access_token（7200 秒有效），配置里的 `token` 不再参与鉴权，已从配置生成器和模板中移除。
+>
+> 还没有创建机器人应用？先看 [起步：注册 QQ 开放平台 & 启动 Gensokyo](docs/起步-注册QQ开放平台&启动gensokyo.md)。
+
+### ② 服务器连接（必填）
+
+| 字段 | 推荐值 | 说明 |
+|---|---|---|
+| 监听端口 `port` | `15630` | 正向 WS / WebUI / API 共用此端口；被占用就换一个，SparkBridge 要同步改 |
+| 正向WS令牌 `ws_server_token` | 自己设一个随机字符串 | SparkBridge `base/config.json` 的 `pwd` 必须与它一致 |
+
+### ③ 消息行为（推荐配置）
+
+- **事件订阅 `text_intent`**：默认全选（群 @ 消息、群全量消息、私聊、群成员加入/退出、用户申请加群、订阅消息状态、机器人被拉入/移出群、群开关机器人推送）。
+  - **群全量消息**需要官方开放权限；没有权限可取消勾选，只保留群 @ 消息。
+  - **群管理事件**（入群审批、群禁言等）需要机器人在群里是**群管理员**，由群主在手机 QQ 群设置里配置。
+- **响应模式 `require_mention`**：默认「全量响应（所有消息都处理）」；如果只想让机器人响应 @ 它的消息，选「仅响应 @机器人」。
+- **主动消息 `allow_proactive_msg`**：推荐「允许主动发送」；需官方主动消息权限，否则会报 `40034105 主动消息失败, 无权限`。
+- **日志级别 `log_level`**：`info`（推荐）；排查问题选 `debug`，长期运行选 `error` 减少日志量。
+
+### ④ 群消息 @ 设置（默认关闭，按下游插件需要开启）
+
+QQ 官方机器人对 @ 的支持要分场景看，不是“完全不支持”：
+
+- **群 markdown 消息可以渲染真实 @**：本 fork 的 `at_markdown` 默认开启，含 at 的群纯文本消息会自动升级为 markdown 发送真 at
+- **纯文本通道里的 `<qqbot-at-user>` 标签本身不渲染**（显示原文）；关闭 `at_markdown` 时才降级为 `@昵称` 文本
+- 2026-10-26 起**纯文本消息**支持 `<qqbot-at-everyone />` @全体成员
+
+**消息形态与 @ 能力对照**：
+
+| 消息形态 | 能否真 @ | 适配行为 |
+|---|---|---|
+| markdown 消息（含 markdown 图片 / `qqbot-media://` 资源） | ✅ 可以 | 保留 `<qqbot-at-user>` / `<qqbot-at-everyone />` |
+| 纯文本消息 | ⚠️ 单成员 at 不渲染，`@全体成员` 可以 | `at_markdown` 开启时单成员 at 升级 markdown；关闭时降级 `@昵称` |
+| 富媒体图片/语音/视频（`RichMediaMessage` / `MsgType=7`） | ❌ 不可以 | at 自动还原为 `@昵称` 文本、`@全体成员` 还原为文本；不升级 markdown，避免原始标签当正文发出 |
+
+> 部分用户没有 markdown 发图条件，只能走富媒体图片/语音/视频通道——这条通道官方不支持 at 标签，所以**无法真 @**，本 fork 会自动降级为文本，不会把 `<qqbot-at-user>` 原始标签发给对方。
+
+下面三个开关默认都关闭，但作用在**完全不同的环节**，需要根据下游插件的行为选择，不能一概认为不需要开：
+
+| 开关 | 作用环节 | 什么时候需要开 |
+|---|---|---|
+| `remove_at` | 接收侧 | 收到的群 @ 消息开头带 `[CQ:at,qq=机器人]`，而下游插件只识纯指令、不认识 at 开头时开启 |
+| `add_at_group` | 接收侧 | 下游插件必须看到 @ 才响应时开启（给收到的群消息前补 @机器人，与 `remove_at` 相反） |
+| `remove_bot_at_group` | 发送侧 | 不想让发出去的群消息出现任何普通成员 at 时开启：`at_markdown` 开启时删真 at，关闭时删 `@昵称` 文本；`@全体成员` 不受影响 |
+
+### ⑤ 链接发送方式
+
+QQ 官方机器人对消息里的链接有域名校验，陌生域名可能被拦截或不可点击。三选一：
+
+| 模式 | 说明 |
+|---|---|
+| **二维码模式（推荐）** | 链接转成二维码图片发出，无需域名/端口/备案 |
+| 短链模式 | 链接转成 `你的域名/url/xxx`，需要在下方填 `server_dir` 并在 QQ 后台校验域名 |
+| 不转换 | 原样发送，可能被官方拦截或不可点击 |
+
+### ⑥ 维护通知（WS 全部掉线时的兜底回复）
+
+当 Gensokyo 到应用端的 WS 连接**全部失败**时，收到消息会通过官方 API 回一条「维护中」文案：
+
+- **总开关** `downtime_message_enabled`：关闭后完全不回复
+- **冷却分钟** `downtime_cooldown`：默认 `10`；群聊/频道是**一对多**场景，同一「群/频道 + 用户」冷却期内最多回一次；`0` = 不冷却；私聊/C2C 是 **1 对 1**，每条都回，不受冷却限制
+- **维护文案** `downtime_message`：留空 = 不发送（等同于关闭通知）
+
+### ⑦ 假回复 FakeReply
+
+QQ 官方机器人**不支持** OneBot v11 的 `reply` 引用段（`{"type":"reply","data":{"id":...}}`）。开启后，Gensokyo 会把这类消息**文本伪造**为：
+
+```
+回复 @昵称
+————
+被回复的那条消息原文
+[本条消息内容]
+```
+
+- 默认开启；收到的每条消息都会按 `message_id` 持久化发送者昵称与原文（存于 `msgmap.db`，保留 7 天）
+- 查不到记录时跳过伪造，按普通消息发送
+- 关闭 `fake_reply` 后直接忽略 `reply` 段
+- 配合 `at_markdown` 开启时，「回复 @昵称」的昵称部分会升级为真实 at
+
+### ⑧ 真实 At（Markdown）AtMarkdown
+
+官方文本链的 at 格式 `<qqbot-at-user id="openid"/>` 在**纯文本**消息里实测**不渲染**（显示原文）；频道 markdown 模板语法 `<at id="openid"></at>` 在群聊自定义 markdown 里实测同样不渲染。但**markdown 消息**可以渲染真实 at。
+
+- **默认开启**（建议先在测试群验证；可在此关闭）
+- 开启后，**含 at 的群纯文本消息**自动升级为 markdown 消息（`msg_type=2`）发送真 at
+- 带图/语音等富媒体消息、超长消息**不升级**（at 还原为 `@昵称`）
+- 关闭后维持 `@昵称` 文本
+
+### 生成之后怎么用
+
+1. 点 **「生成 config.yml」**
+2. 点 **「下载文件」** 保存为 `config.yml`，或点 **「复制内容」** 粘贴到新建的 `config.yml`
+3. 把 `config.yml` 放到 Gensokyo 程序**同目录**（覆盖旧文件）
+4. 重启 Gensokyo
+
+> 生成器没有提供的选项（如 `custom_bot_name` 机器人昵称、`title` 标题、HTTP API 等）可以直接编辑生成的 `config.yml` 手动修改。
+
+### 配置器常见问题
+
+| 问题 | 解决办法 |
+|---|---|
+| 不知道 client_secret 在哪 | QQ 开放平台 → 你的应用 → 开发设置 |
+| 端口被占用 / 启动报错 | 换一个 `port`，并同步修改 SparkBridge 的连接地址 |
+| SparkBridge 连不上 | 检查正向 WS 地址 `ws://127.0.0.1:<port>`，以及 `ws_server_token` 与 SparkBridge 的 `pwd` 是否一致 |
+| 配置生成了但没生效 | 确认文件名是 `config.yml`、放在程序同目录、并重启了进程 |
+| 机器人不回复群消息 | 确认 `text_intent` 勾了对应事件；群全量消息需官方权限；群管理事件需机器人是管理员 |
+| 想改机器人昵称 | 生成后手动修改 `custom_bot_name` |
+
+---
+
+## ✨ 核心能力
+
+| 能力 | 说明 |
+|---|---|
+| **群全量消息** | 订阅后可收到群内每条消息，不要求 @bot（需官方权限） |
+| **主动消息发送** | 无被动 `msg_id` 窗口也可直接发送（需官方权限） |
+| **群管理 API** | 入群审批、申请列表、群禁言/全员禁言、机器人群内状态、入群自动审批策略 |
+| **群管理事件** | 群成员加入/退出、入群申请、订阅消息状态 → OneBot notice/request |
+| **FakeReply 假回复** | `reply` 引用段文本伪造「回复 @昵称」 |
+| **真实 At（Markdown）** | 含 at 的群文本升级 markdown，渲染真实 @ |
+| **表情消息适配** | 入站对齐 OneBot（`subType=1` / 表情名）；出站 face 段降级 `[表情名]` |
+| **撤回自己的消息** | 标准 `delete_msg` 只传 `message_id` 即可撤回机器人自己发的消息 |
+| **@全体成员** | `[CQ:at,qq=all]` → 官方 `<qqbot-at-everyone />`（2026-10-26 新特性） |
+| **头像兼容路由** | `GET /g?b=qq&nk=数字ID&s=尺寸` 兼容旧 qlogo 链接 |
+
+> **@全体成员用法**：OneBot 发 `[CQ:at,qq=all]`（数组段 `{"type":"at","data":{"qq":"all"}}`）即可，适配层自动转换为官方 `<qqbot-at-everyone />`。仅群聊生效，文本消息和 markdown 消息都支持；机器人必须是群管理员，且**每个群每天只能发送 1 次**（官方服务端校验，超限会报错）。
+
+以上能力的实现细节、实测结论和完整 API 参数见 **[DanielToyama 更新记录](docs/DanielToyama更新记录.md)** 与 **[适配 API 清单](docs/适配API清单.md)**。
+
+## 📋 配置参考（手动配置）
+
+不想用配置生成器时，可参考以下最小配置。完整字段说明见根目录 `config.yml` 注释。
+
+```yaml
+settings:
+  app_id: 1234567890
+  uin: 4015000000
+  client_secret: "你的客户端密钥"
+
+  text_intent:
+    - "GroupATMessageEventHandler"          # 群 @ 消息
+    - "GroupMessageEventHandler"            # 群全量消息（需官方权限）
+    - "C2CMessageEventHandler"              # 私聊
+    - "GroupMemberAddEventHandler"          # 群成员加入
+    - "GroupMemberRemoveEventHandler"       # 群成员退出
+    - "GroupJoinRequestEventHandler"        # 用户申请加群（需群管理员）
+    - "SubscribeMessageStatusEventHandler"  # 订阅消息授权状态变更
+
+  port: "15630"
+  enable_ws_server: true
+  ws_server_token: "你的正向WS令牌"
+
+  allow_proactive_msg: true   # 允许主动消息
+  require_mention: false      # false=全量响应, true=仅@响应
+  fake_reply: true            # FakeReply 假回复
+  at_markdown: true           # 真实 At（Markdown）
+
+  downtime_message_enabled: true
+  downtime_cooldown: 10
+  downtime_message: "正在维护中，请稍后再试~"
+```
+
+## 🛠 方案说明
+
+### 方案优势（对比普通 QQ 小号挂机方案）
+
+- **官方机器人接入**：机器人是官方开放平台注册的应用，**无需普通 QQ 小号挂机**（不需要手机/电脑保持 QQ 在线、不会被挤下线）
+- **不掉线**：走官方 WebSocket 网关 + 自动重连，无登录态过期、无第三方协议风控下线，长期稳定运行
+- **全局信息**：消息经官方云端 API 全局收发，与任何客户端/设备解耦，重启进程即恢复
+- **不易封号**：官方通道合法合规，不存在腾讯封杀第三方协议的风险
+
+### 方案边界（官方 API v2 限制，请先了解）
+
+- **@ 能力分场景**：群 markdown 消息可渲染真 @（`at_markdown` 默认开启）；纯文本里的单成员 at 不渲染，降级为 `@昵称`；2026-10-26 起纯文本支持 `@全体成员`
+- **主动消息频控**：Bot 维度 60 QPM（未认证 30 QPM），单关系 20 QPM，不适合高频刷屏场景
+- **官方接口能力有限**：踢人、改群名、拉取成员列表等官方 API 没有，这类功能无法实现
+- **群管理操作需管理员**：入群审批、群禁言等需要机器人是群管理员
+- **部分资料不可得**：QQ 等级、性别、年龄官方不提供（`get_stranger_info` 返回占位 / QQ 等级恒 9999）
+- **链接域名校验**：消息里的链接需过 QQ 域名校验，可用配置生成器的二维码/短链模式规避
+
+### 已知待办
+
+- **回调按钮唤醒机制**（规避主动消息 60/min 频控）：Gensokyo 已有按钮回调 → `event_id` 缓存的基础链路（`ProcessInlineSearch` → `echo.AddEvnetID`），但缺少「无可用 event_id 时自动发送回调按钮消息唤醒」的闭环。若未来群服互通高频推送触发频控，需在 `send_group_msg.go` 补上主动唤醒逻辑。
+
+---
+
+## 📚 文档导航
+
+| 文档 | 内容 |
+|---|---|
+| [DanielToyama 更新记录](docs/DanielToyama更新记录.md) | 全部 45 笔提交、按能力域整理的完整改动记录（GPLv3） |
+| [适配 API 清单](docs/适配API清单.md) | 本 fork 新增/专门适配的 API、参数、事件与 HTTP 路由 |
+| [撤回消息](docs/撤回消息.md) | `delete_msg` 完整用法、四种会话对照、常见坑 |
+| [API 介绍](docs/api介绍.md) | 完整 API 文件索引（49 个动作） |
 
 ## 致谢 / Acknowledgements
 
 - 原项目：[hoshinonyaruko/gensokyo](https://github.com/hoshinonyaruko/gensokyo)（[GPLv3](LICENSE)），原作者 [SanaeFox](https://github.com/Hoshinonyaruko) 及上游所有贡献者
-- 本项目在原项目基础上增加了群服互通相关能力（详见下方说明），**原版权声明与 LICENSE 全文保留**，各修改文件头部已标注 `Modified by DanielToyama` 修改声明
+- 本项目在原项目基础上增加了群服互通相关能力，**原版权声明与 LICENSE 全文保留**，各修改文件头部已标注 `Modified by DanielToyama` 修改声明
 - 若你使用本项目发现问题，请在本仓库反馈，**不要向上游提交与本项目相关的问题**
+
+## 修改记录（GPLv3）
+
+完整的逐笔提交记录、改动文件与实测结论已整理到 **[docs/DanielToyama更新记录.md](docs/DanielToyama更新记录.md)**（含 2026-08-15 起全部 45 笔提交）。
+
+近期重点：
+
+- **2026-11-10**：支持群聊 @全体成员（`[CQ:at,qq=all]` → `<qqbot-at-everyone />`）；移除已废弃的 `token` 配置；修复配置生成器 YAML 格式错误（注释换行 + 特殊字符转义）
+- **2026-11-07**：撤回机器人自己发的消息不再静默失败 —— 出站消息入库 + `delete_msg` 反查扩展
+- **2026-09-02**：表情表补全（273 条，id 0~431），入站表情分类对齐 OneBot
+- **2026-08-31**：出站 `face` 段降级为 `[表情名]` 占位
+- **2026-08-20**：`/g` qlogo 兼容头像路由；`delete_msg` 与群禁言修复
+- **2026-08-19**：FakeReply、真实 At（Markdown）默认开启；入群 comment 标准格式
+- **2026-08-18**：`get_status` 对齐 LLOneBot；维护通知配置化
+- **2026-08-15 ~ 08-17**：fork 建立，群全量消息/主动消息/群管理事件与 API/username 回填
+
+各修改文件头部均保留 `Modified by DanielToyama` 声明，遵循上游 GPLv3。
 
 ---
 
-> ##  本 Fork 为针对[Sparkbridge-群服互通机器人](https://sparkbridge.cn)使用场景魔改开发版本
->
-> 基于 [hoshinonyaruko/gensokyo](https://github.com/hoshinonyaruko/gensokyo) 上游分支，为满足群服互通场景需求，在官方代码基础上增加了以下修改（**未合并回官方，基本vibe加小测试，代码可靠性未知，请勿向官方提 PR**）：
->
-> ### 新增能力
-> 1. **群全量消息接收**（`GROUP_MESSAGE_CREATE`）
->    - 订阅后机器人可收到群里每条消息（不要求 @bot）
->    - 与 `GroupATMessageEventHandler`（@消息）可同时开启，内部按消息 ID 去重
-> 2. **主动消息发送**（无 `msg_id` 直接发送）
->    - 配置 `allow_proactive_msg: true` 后，无被动窗口时也直接发送
->    - 需官方主动消息权限（否则报 `40034105 主动消息失败, 无权限`）
-> 3. **`require_mention` 群消息响应开关**
->    - `false`（默认）= 全量消息都响应；`true` = 仅响应 @bot 消息
->    - 仅对全量事件生效，@ 事件不受影响
-> 4. **群聊管理（官方 API v2 群管理板块，20260810+ 新增接口/事件）**
->    - 事件（新增 `GROUP_MEMBER_EVENT (1<<24)`；并入 `GROUP_AND_C2C_EVENT (1<<25)`）：
->      - `GROUP_MEMBER_ADD` → onebot `notice.group_increase`（官方事件无操作者字段, sub_type 默认 approve）
->      - `GROUP_MEMBER_REMOVE` → onebot `notice.group_decrease`（sub_type 默认 leave）
->      - `GROUP_JOIN_REQUEST`（用户申请加群，机器人需群管理员）→ onebot `request.group`(sub_type=add, flag=join_request_id)
->      - `SUBSCRIBE_MESSAGE_STATUS`（订阅消息授权状态变更）→ 扩展 `notice.subscribe_message_status`
->    - 操作（均走官方 v2 群管理接口，调用域名已按官方统一为 `api.bot.qq.com`）：
->      - `get_group_info` 群类型返回**真实群信息**（原先为模拟数据"测试群"）
->      - `set_group_ban` → 官方"设置群成员禁言"（`/restrict_chat_setting`，需群管理员，最长 30 天；duration=0 解禁）
->      - `set_group_whole_ban` → 全员禁言开关（官方文档暂未声明 global_rule 可写，best-effort 透传）
->      - `set_group_add_request` → 官方"入群申请审批"（approve/refuse，flag=join_request_id，reason=拒绝理由）
->      - 拓展API：`get_group_join_request_list`（入群申请列表，分页）、`get_group_restrict_chat_setting` / `set_group_restrict_chat_setting`（禁言状态查询 / 原始透传）、`get_group_bot_state`（机器人群内状态）
->      - 入群自动审批策略 6 个接口：`create/get/update/delete_join_approval_strategy` + `update_join_approval_strategy_whitelist` + `execute_join_approval_strategy`
-> 5. **SparkBridge 群服互通适配**
->    - **群消息 at 转换**：官方 API 发送富文本实测不渲染任何 @ 标签，gsk 出站时自动把 at 段转成markdown真at或转换为 **`@昵称`** 文本（若需要发送图片情况下无法使用md，使用昵称缓存优先：每条群消息/加群申请都会缓存官方 username，**持久化 7 天、重启不丢**）；**昵称未知时显示 `@Openid+openid前8位`** 保底（让客户区分这不是真 QQ 号）
->    - **`get_stranger_info` 已实现**：昵称取官方事件缓存的 `username`（加群申请等事件携带）；`sex/age` 官方不提供返回空/0；**`qqLevel` 官方无 QQ 等级数据，固定 9999** 放行等级门槛（防插件按 0 级误拒）
->    - **任何 action 都有合法 JSON 回应**：未注册/出错的 action 回 `{"status":"failed","retcode":1400,"data":{"message":...},"echo":...}`，不再沉默（避免 SparkBridge 等对端等待超时拿 undefined 后 JSON5 解析崩溃）
->    - **`set_group_add_request` 支持只传 flag**：SparkBridge groupRequest 插件审批只传 `flag(join_request_id)`/`approve`/`reason` 时，从事件缓存（`join_request_id → 群/成员 openid`）反查后调官方审批接口；`approve=false` 即拒绝（不再要求 refuse 字段）
-> 6. **FakeReply 假回复**（OneBot v11 `reply` 引用段的文本伪造实现）
->    - 官方协议不支持真实引用（参考 OneBot 11 规范 `send_group_msg` 的 `{"type":"reply","data":{"id":...}}` 引用段），但引用能让人辨别"在回复谁"
->    - Gensokyo 把**收到的每条群/私聊/频道消息**按 `message_id` 持久化发送者昵称与原文到本地 **`msgmap.db`**（bbolt，重复键覆盖，保留 7 天自动清理）
->    - 应用端（如 SparkBridge）发送带 `reply` 引用段的消息时，自动文本伪造为 `回复 @昵称` + `————` + 原消息内容，再接本条消息正文；支持与 text/at/image 等段**混合发送**；查不到记录时跳过伪造、按普通消息发送
->    - 配置开关 **`fake_reply`**（默认 `true`）：`false` = 忽略 reply 段
->    - **fakeReply 升级**（`at_markdown` 开启时生效）：前缀"回复 @昵称"的昵称部分替换为官方文本链真实 at 标签 `<qqbot-at-user id="openid"/>`（openid 从 msgmap 记录的 `UserID` 经 idmap 反查），整条消息随 markdown 升级发送，群里渲染出真实的"回复 @某某"；反查失败或私聊/频道场景回退为文本 @昵称
-> 7. **真实 At（Markdown）AtMarkdown**（官方文本链 at 标签不渲染 → markdown 消息发真 at）
->    - 官方文本链文档给出的 at 格式 `<qqbot-at-user id="openid"/>`（旧协议 `<@userid>` 已废弃）**实测在纯文本消息不渲染**（显示原文）；频道 markdown 模板语法 `<at id="openid"></at>` 在**群聊自定义 markdown 同样实测不渲染**（2026-08-19 实测），此前 gsk 出站 at 一律转 **`@昵称`**（见能力 5）
->    - 实测：**markdown 消息**可渲染真实 at；且 2026/04/23 起**自定义 markdown 已开放到所有机器人**（单聊/群聊，无需申请模版）
->    - 配置开关 **`at_markdown`**（**默认 `true`**）：开启后，发送**含 at 段的群纯文本消息**时自动升级为 markdown 消息（`msg_type=2`, `markdown.content` 内嵌官方文档"最新格式" `<qqbot-at-user id="openid"/>`，openid 由 idmap 反查），尝试渲染真 at；**带图/语音等富媒体消息不升级**（富媒体通道无 at 渲染，at 还原为 @昵称；图文+at 不合并）
->    - 持续更新，更多与onebot11不兼容之处可反馈，我将尝试支持。
-> 8. **表情消息处理**（官方通道不支持"表情作为消息内容" → 对齐 OneBot 惯例降级适配）
->    - **入站对齐 OneBot**：官方群消息的 `faceType=4`（表情包商店）与 `faceType=6`（自定义/收藏表情）本质是图片，其附件在 `image` 段标记 `subType=1`（动画表情，LLOneBot 同款），普通图片 `subType=0`；`faceType=6` 跳过无意义的 face 标签；`faceType=4` 官方事件无图片附件（`faceId` 空、`ext` 仅含 `{"text":"表情名"}`，无 emoji_id→URL 数据源），降级为**文本名字**（解码 ext，如 `[代班]`/`[跳舞]`）；系统表情仍转 `[CQ:face,id=xxx]`
->    - **出站 face 段降级**：官方 bot 能力表**没有"表情"这一消息类型**（表情表态=给消息点赞，不是发送表情），`<emoji:ID>` 纯文本与 markdown 通道实测均不渲染、Unicode emoji 字符方案也行不通；出站 `face` 段统一降级为 **`[表情名]`**（如 `[微笑]`，`faceNameMap` 为 QQNT 官方面板 + face_config 经典合并 273 条，未收录显示 `[表情:id]`），不丢内容、不触发 markdown 升级
-> 9. **官方字段对齐 onebot 的适配能力**（把官方事件/字段转成 SparkBridge 等对端习惯的形态）
->    - **官方 username 回填 `Sender.nickname/card`**：官方事件 `author.username` 已返回真实昵称（如 `Daniel_户山兔兔`），此前 onebot 事件的 `sender.nickname/card` 恒为空；现 `card_nick` 配置优先、否则回退官方 username 作默认昵称（覆盖群消息 + C2C 私聊），配合能力 5 的昵称缓存，全程不丢发起者昵称
->    - **入群审核 comment 增强**：官方入群申请支持问答验证（`verify_info.method=admin_review_qa`，问题/答案在 `verify_info.review_qa_list`），gsk 拼接为 `问:… 答:…` 进 comment；`get_group_join_request_list` 每条申请附加 comment 增强字段；comment 仅剩空值时打印留痕日志（区分申请人未填/官方缺字段/偶发）
->    - **出站 at 行为**：对话文本内的 @ / 伪 at 码做转义，避免误解析；群内新成员进群时机器人 @ 行为更合理（见能力 5/7）
->    - **qface 表情出站格式**：官方事件表情内嵌标记 → onebot CQ 码的转换格式修正（见能力 8）
->    - **维护通知（`downtime_message` 系列）**：机器人在线状态广播消息可配置化——`downtime_message_enabled`（总开关）与 `downtime_cooldown`（冷却分钟）控制发送频率
->    - **任何 action 均有合法回应**：未注册/出错 action 回标准失败结构，杜绝对端取 `undefined` 致 JSON5 解析崩溃（见能力 5）
-> ### 配置说明
-> 🛠️ 不想手写配置？用**可视化配置生成器**：[打开 gensokyo-config-gen.html](https://htmlpreview.github.io/?https://raw.githubusercontent.com/DanielToyama/Gensokyo-Forspark/main/gensokyo-config-gen.html)（浏览器直接渲染成页面；也可本地双击仓库根目录同名文件，或在 SparkBridge 的「Gensokyo配置生成」页面使用内置同款）
-> ```yaml
-> text_intent:
->   - "GroupMessageEventHandler"      # 群全量消息（需官方开放权限）
->   - "GroupATMessageEventHandler"    # 群@消息
->   - "C2CMessageEventHandler"        # 群私聊
->   - "GroupMemberAddEventHandler"    # 群成员加入（需 GROUP_MEMBER_EVENT 权限）
->   - "GroupMemberRemoveEventHandler" # 群成员退出
->   - "GroupJoinRequestEventHandler"  # 用户申请加群（机器人需群管理员）
->   - "SubscribeMessageStatusEventHandler" # 订阅消息授权状态变更
-> allow_proactive_msg: true           # 允许主动消息
-> require_mention: false              # false=全量响应, true=仅@响应
-> downtime_message_enabled: true      # 维护通知总开关: false=WS全部掉线时不回复维护文案
-> downtime_cooldown: 10               # 维护回复冷却(分钟): 群/频道一对多,同一用户冷却期内最多回一次; 0=不冷却; 私聊/C2C不受影响
-> downtime_message: ""                # 维护文案, 留空=不发送
-> fake_reply: true                    # FakeReply假回复开关: true=应用端发reply引用段时文本伪造"回复 @昵称\n————\n原内容"; false=忽略reply段
-> at_markdown: false                  # 真实At(Markdown)开关: 开启后含at的群文本消息升级为markdown消息发真at(实验功能); false=维持@昵称文本
-> ```
->
-> ### 修复
-> - `ProcessGroupMessage` 类型转换问题：兼容 `WSGroupMessageData`（全量）与 `WSGroupATMessageData`（@）两种事件，避免下游 type switch 匹配失败导致消息被误拦
-> - **官方 username 回填 `Sender.nickname/card`**：官方事件 `author.username` 已返回真实昵称（如 `Daniel_户山兔兔`），此前 OneBot 事件的 `sender.nickname/card` 恒为空。现在 `card_nick` 配置优先，否则回退使用官方 username 作为默认昵称（覆盖群消息 + C2C 私聊）
-> - **群消息 @ 转文字**：官方 API 无可用真 @ 方案（`<qqbot-at-user id=.../>` 实测显示原文），出站 at 段自动转 `@昵称` 文本（昵称缓存优先；昵称未知时移除 at，见新增能力 5）
-> - **入站 @ 转 CQ at**：官方群消息里的 @ 是 `<@openid>` 内嵌标签（旧正则只匹配 `<@!数字>`），现已转成 `[CQ:at,qq=xxx]` 体现在 raw_message/message——xxx 与 gsk 中该成员的 user_id 一致，下游插件可用它指定人（如"@某人 绑定白名单"）
-> - **入站表情转 CQ face**：官方群消息里的表情是 `<faceType=1,faceId="264",ext="...">` 内嵌标记，现已转成 `[CQ:face,id=264]`（raw_message）与 `{type:"face",data:{id:"264"}}`（array 段），与 LLOneBot 等实现行为一致；**不管 faceType 是几（系统表情/动态表情/贴纸）一律按 faceId 转**（此前 faceType≠1 会返回空导致整条消息被误判为黑白名单拦截丢弃）
-> - **维护通知（`downtime_message` 系列）行为修复/增强**（WS 全部掉线时的兜底回复，改动见 `Processor/Processor.go` 的 `BroadcastMessageToAll`）：① 未配置 `downtime_message` 时不再发送空消息；② 群聊@消息/频道@消息为**一对多**场景，按「群/频道+用户」冷却（时长由 **`downtime_cooldown`** 配置，分钟，`0`=不冷却），同一用户冷却期内只回一次（WS 掉线不再"收到什么回什么"刷屏）；③ **群全量消息（未@bot）与频道不at消息不再触发维护回复**；④ 私聊/C2C/频道私信为 **1 对 1** 场景，**每条都回**，不受冷却限制；⑤ 新增 **`downtime_message_enabled`** 总开关（`false`=完全不回复）；（修改由 GitHub 用户 [DanielToyama](https://github.com/DanielToyama) 完成，遵循上游 GPLv3）
->
-> ### 修改记录（GPLv3）
-> - **2026-09-02**（DanielToyama）：修复「撤回机器人自己发的消息」静默失效 —— 出站消息入库 + `delete_msg` 反查扩展
->   - 修改文件：`msgmap/msgmap.go`、`handlers/outbound_msgmap.go`（新增）、`handlers/message_parser.go`、`handlers/delete_msg.go`、`docs/撤回消息.md`（新增）、`readme.md`
->   - 变更内容：**① 问题**：标准 onebot v11 `delete_msg` 只传 `message_id`，而 `msgmap` 只记录机器人**收到**的消息（`ProcessGroupMessage`/`ProcessC2CMessage`/`ProcessGuildATMessage` 三处），机器人自己发出去的消息从未入表，反查落空后四个撤回分支全部跳过，响应却依然是 `{"status":"ok"}` —— 应用端以为撤回成功、实际什么都没发生（SparkBridge3 的 `QClient.deleteMsg(id)` 正是这种写法，必踩）。**② 出站入库**：新增 `msgmap.RecordOutbound`（`MsgInfo` 加 `Outbound` 标记，`Nickname` 记 `custom_bot_name` 供 fakeReply 引用机器人自己的消息时显示「回复 @机器人名」）；五个发送回执函数 `SendResponse`/`SendResponseSB`/`SendGuildResponse`/`SendC2CResponse`/`SendGuildPrivateResponse` 各埋一处（`send_msg`、`*_async`、`*_raw`、`forward`、`sse`、`wakeup` 全部汇流于此），把 `message_id`（官方 id + 应用端压缩行 id 双键）→ 会话对象写入，7 天 TTL 与入站记录一致。**③ 反查扩展**：`delete_msg` 的缺参反查从「群 / 私聊」两条扩到「群 / 私聊 / 频道（`channel_id`）/ 频道私信（`guild_id`）」四条，均只在 `Outbound` 记录上生效以避免与入站记录语义混淆；私聊分支限定 `MsgType=="group_private"`，防止频道记录带 `user_id` 被误判为 C2C。**④ 健壮性**：`message_id` 缺失时不再 `.(string)` panic（改为记日志 + 标准响应）；idmap 反查失败时回退用原始 id / 目标 id，不再把空值发给官方接口。**效果**：`{"action":"delete_msg","params":{"message_id":X}}` 即可撤回机器人自己发的消息，无需应用端传 `group_id`
-> - **2026-08-31**（DanielToyama）：表情消息入站对齐 OneBot —— 自定义/表情包图片标记 `subType=1`、表情包降级名字文本
->   - 修改文件：`handlers/message_parser.go`、`handlers/face.go`、`readme.md`
->   - 变更内容：**① 图片附件 subType**：官方群消息含 `faceType=4`（表情包商店）/`faceType=6`（自定义/收藏表情）时，其图片附件标记 `subType=1`（动画表情），普通图片保持 `subType=0`（与 LLOneBot 上报一致，`message` 段数组与 `raw_message` 字符串两条路径都改）。**② faceType=4 表情包商店**：官方 WS 事件无图片附件（`faceId` 为空、`ext` 仅含 `{"text":"表情名"}`），无法像 LLOneBot 那样构造带 `url` 的 `mface`（缺 emoji_id→URL 数据源），故降级为**文本名字**（解码 ext 的 `text`，如 `[代班]`/`[跳舞]`），已收录名不丢内容。**③ faceType=6 自定义表情**：跳过 face 标签（真实内容即附件图片，避免拆出无意义的 `[CQ:face,id=0]`）。**④ 系统表情不变**：仍转 `[CQ:face,id=xxx]`。**LLOneBot 参考形态**：mface（`[CQ:mface,summary=..,url=..,emoji_id=..,emoji_package_id=..,key=..]`）、动画图（`image subType=1`）
-> - **2026-08-31**（DanielToyama）：face 表情段出站 —— 官方通道不支持,降级为可读占位(终稿)
->   - 修改文件：`handlers/face.go`、`handlers/send_group_msg.go`、`readme.md`
->   - 变更内容：官方 bot 能力表没有"表情作为消息内容"这一项(只有表情表态=给消息点赞)。经真群实测三条路全部证伪：`<emoji:ID>` 纯文本显示原文、`<emoji:ID>` markdown 通道不渲染、Unicode emoji 字符方案行不通；最终 face 段降级为 `[表情名]` 占位（如 `[微笑]`，不丢内容、不中断后续段、不触发 markdown 升级）。`faceNameMap` 为 QQNT 官方面板 + face_config 经典两套编号体系的**合并**（273 条，id 0~431，冲突以 QQNT 为准）。`maybeUpgradeToMarkdownAt` 恢复仅处理 at 标签
-> - **2026-08-20**（DanielToyama）：修复出站消息 `face` 段被静默丢弃（官方 bot 发不了数字表情）
-> - **2026-08-20**（DanielToyama）：新增野鸡 qlogo 兼容路由 `GET /g?b=qq&nk=数字ID&s=尺寸`（内部 HTTP 服务）
->   - 修改文件：`main.go`、`server/avatarProxy.go`、`readme.md`
->   - 变更内容：部分客户端/前端习惯用 `https://q1.qlogo.cn/g?b=qq&nk=<QQ号码>&s=640` 取头像，但官方 bot 无 QQ 号（出站 avatar 是 `q.qlogo.cn/qqapp/<appid>/<openid>/640`）；新增路由把应用端视角的"虚构QQ号"（idmap 数字行ID）反查为 openid。**默认代理模式**：由 Gensokyo 后台下载官方头像后直接返回图片字节流（透传 Content-Type，客户端无需理解重定向，覆盖 axios/浏览器/官方服务器/不跟随 302 的客户端等全部场景）；显式 `&redirect=1` 时才 302 到官方地址。示例：`http://<gsk地址>:<端口>/g?b=qq&nk=800512121&s=640`；`b` 非 qq / nk、s 非纯数字 返回 400，反查不到返回 404，头像源不可达返回 502
-> - **2026-08-20**（DanielToyama）：修复 `delete_msg` 撤回两处问题（响应结构误用 + 缺参静默不执行）
->   - 修改文件：`handlers/delete_msg.go`、`readme.md`
->   - 变更内容：① 响应误用 `GetStatusResponse`（返回了 get_status 的 `data.good/online/stat`），改为标准 onebot v11 成功响应 `data:null`；② 标准 `delete_msg` 仅传 `message_id`，原实现要求 `group_id/user_id` 非空才执行、缺省时四个撤回分支全部跳过（日志只显示一个可疑响应、实际什么都没撤），现在缺参时从 msgmap 缓存（群/私聊消息入库时记录的 GroupID/UserID）反查撤回对象再执行 `RetractGroupMessage` / `RetractC2CMessage`，并打印反查日志
-> - **2026-08-20**（DanielToyama）：修复群禁言被 `guild_id` 配置读取卡死（`set_group_ban` / `set_group_whole_ban` 群聊分支永远到不了）
->   - 修改文件：`handlers/set_group_ban.go`、`handlers/set_group_whole_ban.go`、`readme.md`
->   - 变更内容：两个 handler 把 `idmap.ReadConfigv2(groupID, "guild_id")`（仅频道场景需要）放在 switch 之前——普通群聊从未存过该配置，查询必报 `key 'guild_id' in section '...' does not exist` 并直接 return，**群聊禁言/全员禁言实际从未执行**（应用端只看到报错日志、由于是 fire-and-forget 还看不到失败反馈）；已将 `guild_id` 读取移入 `case "guild"` 分支，群聊分支正常走 `POST /v2/groups/{openid}/restrict_chat_setting`（成员级 `members[].mute_expire_at` / 全员 `global_rule.mode`）
-> - **2026-08-19**（DanielToyama）：fakeReply 假回复前缀真实 at 升级 + `at_markdown` 默认开启
->   - 修改文件：`handlers/message_parser.go`（`buildFakeReplyPrefix` 新增 `mdAt` 参数、`mdAtForFakeReply` 辅助函数）、`config/config.go`（`GetAtMarkdown` 默认 `true`）、`structs/structs.go`、`template/config_template.go`、根目录 `config.yml`、`gensokyo-config-gen.html`（「⑧ 真实 At」默认勾选开启）、`readme.md`
->   - 变更内容：`at_markdown` **默认开启**；fakeReply 假回复前缀"回复 @昵称"在群消息 + `at_markdown` 开启时升级为官方文本链真实 at 标签 `<qqbot-at-user id="openid"/>`（openid 从 msgmap 记录的 `UserID` 经 idmap 反查），整条消息随 markdown 升级发送，群里渲染真实"回复 @某某"；**私聊/频道无 markdown-at 升级链路**（会显示原始标签），回退为文本 @昵称；**图文+at 富媒体消息**维持原样（官方富媒体通道不渲染 at 标签，at 还原为 @昵称，不做公网图合并）
-> - **2026-08-19**（DanielToyama）：Release workflow UPX 安装改直连 GitHub Release 下载（apt 镜像卡死修复）
->   - 修改文件：`.github/workflows/cross_compile.yml`、`readme.md`
->   - 变更内容：`sudo apt-get update` 依赖 azure.archive.ubuntu.com 镜像，该镜像（微软托管 runner 专用）抽风时 apt 无限重试，整个构建卡死在 Compress with UPX 步（2026-08-19 `v2026.08.19.144851` 实测）；改为直连 `github.com/upx/upx` Release 下载 UPX 二进制（走 objects.githubusercontent.com CDN，不依赖 apt 镜像），下载失败才回退 apt（带 `Acquire::Retries=3` 重试上限，不再无限挂起）
-> - **2026-08-19**（DanielToyama）：Release workflow UPX 二进制统一用 linux amd64 版（上门修复的 win64 版 bug）
->   - 修改文件：`.github/workflows/cross_compile.yml`、`readme.md`
->   - 变更内容：一次修复在 `matrix.os=windows` 时下载 `upx-4.2.4-win64.zip` 并在 runner 上执行——GitHub runner 是 **Linux 环境，无法运行 Windows 的 PE 程序**，windows 目标任务直接失败；linux amd64 版 UPX **同时支持压缩 PE(.exe)与 ELF**，故所有目标统一下载 linux amd64 版 UPX 并直连 GitHub Release（不走 apt 镜像），apt 仅作兜底（带重试上限）
-> - **2026-08-19**（DanielToyama）：入群申请 comment 问答格式改为 onebot 标准 `问题：…\n答案：…`
->   - 修改文件：`handlers/group_mgmt_common.go`（`BuildJoinRequestComment`）、`readme.md`
->   - 变更内容：问答验证（`admin_review_qa`）的 comment 展示由 `问:Q 答:A；问:Q 答:A` 改为 **onebot 标准格式** `问题：<问题>\n答案：<答案>`（全角冒号，多组问答依序换行）——官方与其他 onebot 客户端均是此格式，下游按标准格式解析/匹配答案；无回答时省略"答案："行；`request.group` 事件 comment 与 `get_group_join_request_list` 的 comment 增强字段同时生效
-> - **2026-08-18**（DanielToyama）：`get_status` 重写为 LLOneBot 文档结构（bot 状态）
->   - 修改文件：`handlers/get_status.go`、`botstats/botstats.go`、`readme.md`
->   - 变更内容：响应改为 `data.{online, good, stat}` + 顶层 `wording`（对齐 LLOneBot `bot状态` 文档）；`stat` 提供真实统计 `message_received`/`message_sent`/`last_message_time`/`startup_time`（后者为新增，来自进程启动时刻），移除原 go-cqhttp 风格写死的测试数据（`packet_received: 1000` 等）；`online/good` 直接为 `true`（能收到请求即说明连接正常）
-> - **2026-08-18**（DanielToyama）：维护通知（`downtime_message` 系列）行为调整 + 新增配置项
->   - 修改文件：`Processor/Processor.go`、`Processor/ProcessGroupMessage.go`、`Processor/ProcessGuildNormalMessage.go`、`structs/structs.go`、`config/config.go`、`template/config_template.go`、根目录 `config.yml`、`gensokyo-config-gen.html`、`readme.md`
->   - 变更内容：见上方「修复」维护通知条目；新增 `downtime_message_enabled`（总开关）与 `downtime_cooldown`（冷却分钟）两个配置项，根目录 `config.yml` 已同步补齐，可视化配置工具 `gensokyo-config-gen.html` 新增「⑥ 维护通知」卡片
-> - **2026-08-18**（DanielToyama）：新增 FakeReply 假回复（OneBot v11 `reply` 引用段的文本伪造）
->   - 修改文件：新增 `msgmap/msgmap.go`（message_id→发送者 持久化，bbolt `msgmap.db`）；`main.go`（初始化/关闭）、`Processor/ProcessGroupMessage.go`、`Processor/ProcessC2CMessage.go`、`Processor/ProcessGuildATMessage.go`（收到消息时记录）、`handlers/message_parser.go`（`reply` 段解析与伪造渲染）、`structs/structs.go`、`config/config.go`、`template/config_template.go`、根目录 `config.yml`、`gensokyo-config-gen.html`（新增「⑦ 假回复」卡片）、`readme.md`
->   - 变更内容：见上方「新增能力 6」；新增配置项 `fake_reply`（默认 `true`）；伪造格式 `回复 @昵称\n————\n原内容`，原内容优先取 reply 段的 `data.text`，否则取 msgmap 持久化的原文
-> - **2026-08-18**（DanielToyama）：新增真实 At（Markdown）AtMarkdown（实验功能）
->   - 修改文件：`handlers/message_parser.go`（`transformMessageTextAt` 产出 `<at id="openid"></at>`）、`handlers/send_group_msg.go`（`maybeUpgradeToMarkdownAt`/`sendGroupMsgUpgraded`，含 at 的群纯文本消息升级 `msg_type=2` markdown）、`structs/structs.go`、`config/config.go`、`template/config_template.go`、根目录 `config.yml`、`gensokyo-config-gen.html`（新增「⑧ 真实 At」卡片）、`readme.md`
->   - 变更内容：见上方「新增能力 7」；新增配置项 `at_markdown`（默认 `false`）；官方文本链 at 标签 `<qqbot-at-user id="openid"/>` 纯文本实测不渲染，改用 markdown 消息按文档"最新格式"注入试渲染真 at；富媒体（图文/语音等）与超长消息不升级，且会把已注入的 at 标签**还原为 @昵称 文本**（防止原始标签当正文发出）；2026-08-19 实测 `<at id="openid"></at>`（频道模板语法）在群聊自定义 markdown 同样不渲染，故注入格式由 `<at>` 改为 `<qqbot-at-user>` 再实测
-> - **2026-08-18**（DanielToyama）：入群审核 comment 增强 + 空值留痕（对应用户反馈"审核内容变成了空"）
->   - 修改文件：`Processor/ProcessGroupJoinRequest.go`、`handlers/group_mgmt_common.go`、`handlers/get_group_join_request_list.go`、`readme.md`
->   - 变更内容：申请词 `comment` 支持**问答验证**（`verify_info.method=admin_review_qa`，官方不回填 `verify_message`，问题和回答在 `verify_info.review_qa_list`）——拼接为 `问:… 答:…` 展示；**`get_group_join_request_list` 每条申请附加 `comment` 增强字段**（原字段不变）；`comment` 最终仍为空时打印**留痕日志**（含完整 `verify_info`），下次复发即可区分"申请人没填验证消息 / 官方事件字段缺失 / 偶发丢字段"
-> - **2026-08-18**（DanielToyama）：发布物压缩方式与 CI 对齐（workflow 写法未改动）
->   - 本地 `gensokyo.exe` 改用与 `.github/workflows/cross_compile.yml` 相同的压缩方式：`-s -w` 构建后 `upx --best`，32,862,208 B → 9,634,304 B（29.3%，与原 workflow Release 产物体积一致）
-> - **2026-08-18**（DanielToyama）：修复 Release workflow 产物丢失（`.github/workflows/cross_compile.yml`）
->   - flatten 步骤改为拷贝到 `output/release/`：此前把 `gensokyo-linux-amd64` 等二进制直接拷到 `output/`，与同名 artifact 目录冲突导致 `cp` 失败（错误被 `2>/dev/null || true` 吞掉），Release 附件只剩 windows 一个
-> - **2026-08-17**（DanielToyama）：fork 建立：群全量消息接收、主动消息、`require_mention`、群管理接口、SparkBridge 互通适配（详见上方新增能力/修复，所有上游 LICENSE/copyright 声明保留）
-> - **2026-08-17**（DanielToyama）：qface 表情出站格式适配 + 新群友 @ 行为优化
->   - 修改文件：`handlers/message_parser.go`、`Processor/ProcessGroupMessage.go`、`config/*`
->   - 变更内容：官方事件表情内嵌标记 `<faceType=..,faceId="..">` 的 CQ 码转换格式修正（qface format）；新群友进群时机器人 @ 行为优化（更合理的群友 at 拼接/去重）
-> - **2026-08-16**（DanielToyama）：出站 @ 行为处理与对话中 @ 转义
->   - 修改文件：`handlers/message_parser.go`、`handlers/send_group_msg.go`
->   - 变更内容：更合理地处理出站 at 段（官方富文本不渲染 at 标签，见新增能力 5）；对对话文本内的 @ 符号/伪 at 码做转义处理，避免误触发解析
-> - **2026-08-15**（DanielToyama）：支持群全量消息接收与主动消息发送 + 官方 username 回填
->   - 修改文件：`main.go`、`Processor/*`、`handlers/message_parser.go`、`server/api.go`
->   - 变更内容：**群全量消息接收**（`GROUP_MESSAGE_CREATE` 订阅后收每条群消息，无需 @bot，见新增能力 1）与**主动消息发送**（`allow_proactive_msg`，无被动窗口直接发，见新增能力 2）；**官方 username 回填 `Sender.nickname/card`**：官方事件 `author.username` 已返回真实昵称，此前 OneBot 事件 `sender.nickname/card` 恒为空，现 `card_nick` 配置优先、否则回退官方 username 作默认昵称（覆盖群消息 + C2C 私聊）
->
-> ### 方案优势（对比普通QQ小号挂机方案）
-> - **官方机器人接入**：机器人是官方开放平台注册的应用，**无需普通 QQ 小号挂机**（不需要手机/电脑保持 QQ 在线、不会被挤下线）
-> - **不掉线**：走官方 WebSocket 网关 + 自动重连，无登录态过期、无第三方协议风控下线，长期稳定运行
-> - **全局信息**：消息经官方云端 API 全局收发，与任何客户端/设备解耦，重启进程即恢复
-> - **不易封号**：官方通道合法合规，不存在腾讯封杀第三方协议的风险
->
-> ### 方案边界（官方 API v2 限制，请先了解）
-> - **无真 @**：@ 仅以文本显示（官方不渲染标签，出站自动转 `@昵称` 文本，见新增能力 5）
-> - **主动消息频控**：Bot 维度 60 QPM（未认证 30 QPM），单关系 20 QPM，不适合高频刷屏场景
-> - **官方接口能力有限**：踢人、改群名、拉取成员列表等官方 API 没有，这类功能无法实现
-> - **群管理操作需管理员**：入群审批、群禁言等需要机器人是群管理员，由群主在手机 QQ 客户端给机器人配置权限
-> - **部分资料不可得**：QQ 等级、性别、年龄官方不提供（`get_stranger_info` 返回占位/QQ等级恒 9999）
-> - **链接域名校验**：消息里的链接需过 QQ 域名校验，gsk 提供**二维码/短链**两种规避方式（配置生成器⑤）
->
-> ### 已知待办
-> - **回调按钮唤醒机制**（规避主动消息 60/min 频控）：Gensokyo 已有按钮回调 → `event_id` 缓存的基础链路（`ProcessInlineSearch` → `echo.AddEvnetID`），但缺少"无可用 event_id 时自动发送回调按钮消息唤醒"的闭环。若未来群服互通高频推送触发频控，需在 `send_group_msg.go` 补上主动唤醒逻辑（参考 amsghook 的 CALLBACK_KEYBOARD + event_id 用次管理 5 次淘汰）
->
-> ---
+<details>
+<summary>📖 附：上游 gensokyo 原版文档（API / CQ 码 / Event 参考）</summary>
 
 <p align="center">
   <a href="https://www.github.com/hoshinonyaruko/gensokyo">
     <img src="images/head.gif" width="200" height="200" alt="gensokyo">
   </a>
 </p>
-</div>
 <div align="center">
 
 # gensokyo
@@ -224,7 +327,7 @@ _✨ 基于 [OneBot](https://github.com/howmanybots/onebot/blob/master/README.md
 ## 介绍
 gensokyo兼容 [OneBot-v11](https://github.com/botuniverse/onebot-11) ，并在其基础上做了一些扩展，详情请看 OneBot 的文档。
 
-Gensokyo文档(施工中):[起步](/docs/起步-注册QQ开放平台&启动gensokyo.md)
+Gensokyo文档(施工中):[起步](docs/起步-注册QQ开放平台&启动gensokyo.md)
 
 可将官方的websocket和api转换至onebotv11标准,
 
@@ -260,7 +363,7 @@ Gensokyo文档(施工中):[起步](/docs/起步-注册QQ开放平台&启动genso
 
 ### 拓展支持
 
-> 拓展 API 可前往 [文档](docs/cqhttp.md) 查看
+> 拓展 API 可前往 [适配 API 清单](docs/适配API清单.md) 查看
 
 - [x] 连接多个ws地址
 - [x] 将频道虚拟成群事件
@@ -328,7 +431,7 @@ todo,正在施工中
 | /send_group_msg√         | [发送群消息]           |
 | /send_guild_channel_msg√ | [发送频道消息]         |
 | /send_msg√               | [发送消息]             |
-| /delete_msg              | [撤回信息]             |
+| /delete_msg√             | [撤回信息]（支持撤回机器人自己发的消息） |
 | /set_group_kick          | [群组踢人]             |
 | /set_group_ban√          | [群组单人禁言]         |
 | /set_group_whole_ban√    | [群组全员禁言]         |
@@ -338,9 +441,9 @@ todo,正在施工中
 | /set_group_leave         | [退出群组]             |
 | /set_group_special_title | [设置群组专属头衔]     |
 | /set_friend_add_request  | [处理加好友请求]       |
-| /set_group_add_request   | [处理加群请求/邀请]    |
+| /set_group_add_request√  | [处理加群请求/邀请]（支持只传 flag） |
 | /get_login_info√         | [获取登录号信息]       |
-| /get_stranger_info       | [获取陌生人信息]       |
+| /get_stranger_info√      | [获取陌生人信息]（昵称缓存 + 等级放行） |
 | /get_friend_list√        | [获取好友列表]         |
 | /get_group_info√          | [获取群/频道信息]     |
 | /get_group_list√         | [获取群列表]           |
@@ -371,6 +474,25 @@ todo,正在施工中
 | /get_group_files_by_folder  | [获取群子目录文件列表] |
 | /get_group_file_url         | [获取群文件资源链接]   |
 | /get_status√                 | [获取状态]             |
+
+#### 本 Fork 新增的群管理拓展 API（官方 API v2）
+
+| 拓展 API | 功能 |
+| -------- | ---- |
+| /get_group_join_request_list | [拉取入群申请列表] |
+| /get_group_restrict_chat_setting | [查询群禁言状态] |
+| /set_group_restrict_chat_setting | [设置群禁言（官方原始透传）] |
+| /get_group_bot_state | [获取机器人群内状态] |
+| /create_join_approval_strategy | [创建入群自动审批策略] |
+| /get_join_approval_strategy_list | [查询入群自动审批策略列表] |
+| /update_join_approval_strategy | [修改入群自动审批策略] |
+| /delete_join_approval_strategy | [删除入群自动审批策略] |
+| /update_join_approval_strategy_whitelist | [修改策略白名单号码] |
+| /execute_join_approval_strategy | [执行策略（全量扫描，异步约 10 分钟）] |
+
+> 兼容别名：`/get_group_ban` = `/set_group_ban`、`/get_group_whole_ban` = `/set_group_whole_ban`（上游早期误注册名，保留兼容）。
+>
+> 以上 API 的参数、响应与注意事项详见 **[适配 API 清单](docs/适配API清单.md)**。
 
 
 </details>
@@ -426,3 +548,6 @@ todo,正在施工中
 ## 性能
 
 10mb内存占用 端口错开可多开 稳定运行无报错
+
+</div>
+</details>

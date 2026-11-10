@@ -18,7 +18,6 @@ type Settings struct {
 	//基础配置
 	AppID        uint64 `yaml:"app_id"`
 	Uin          int64  `yaml:"uin"`
-	Token        string `yaml:"token"`
 	ClientSecret string `yaml:"client_secret"`
 	ShardCount   int    `yaml:"shard_count"`
 	ShardID      int    `yaml:"shard_id"`

@@ -150,8 +150,8 @@ func main() {
 		log.Println("请完成机器人配置后重启框架。")
 
 	} else {
-		//获取bot的token
-		token := token.BotToken(conf.Settings.AppID, conf.Settings.ClientSecret, conf.Settings.Token, token.TypeQQBot)
+		//获取bot的access_token (由 app_id + client_secret 换取, 旧的开放平台 token 字段已废弃)
+		token := token.BotToken(conf.Settings.AppID, conf.Settings.ClientSecret, token.TypeQQBot)
 
 		ctx := context.Background()
 		if err := token.InitToken(ctx); err != nil {

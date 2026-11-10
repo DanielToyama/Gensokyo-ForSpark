@@ -25,7 +25,6 @@ const (
 type Token struct {
 	appID        uint64
 	clientSecret string
-	token        string
 	tokenURL     string
 	Type         Type
 	authToken    *AuthTokenInfo
@@ -45,13 +44,14 @@ func New(tokenType Type) *Token {
 }
 
 // BotToken 创建一个新的 Token 结构体实例，用于机器人身份验证
-func BotToken(appID uint64, clientSecret string, tokenValue string, BotType Type) *Token {
+// 注意: QQ 官方 API v2 使用 appID + clientSecret 动态换取 access_token,
+// 旧的开放平台 token 字段已废弃, 不再参与鉴权。
+func BotToken(appID uint64, clientSecret string, BotType Type) *Token {
 	return &Token{
 		appID:        appID,
 		clientSecret: clientSecret,
 		authToken:    NewAuthTokenInfo(),
 		Type:         BotType,
-		token:        tokenValue, // 更改此处，确保字段名与结构体定义一致
 	}
 }
 
@@ -84,11 +84,6 @@ func (t *Token) GetString() string {
 		return "QQBot " + t.GetAccessToken()
 	}
 	return fmt.Sprintf("%v.%s", t.appID, t.GetAccessToken())
-}
-
-// GetString 获取老授权头字符串
-func (t *Token) GetString_old() string {
-	return fmt.Sprintf("%v.%s", t.appID, t.token)
 }
 
 // GetAccessToken 取得鉴权Token
