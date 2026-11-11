@@ -186,6 +186,14 @@ WS 全部掉线时的兜底回复，改动见 `Processor/Processor.go` 的 `Broa
 > - **修正「④ 群消息 @ 设置」说明**：官方并非“完全不支持真 @”——群 markdown 消息可渲染 `<qqbot-at-user>`（`at_markdown` 默认开启），纯文本单成员 at 才降级为 @昵称；三个开关（`remove_at`/`add_at_group`/`remove_bot_at_group`）按下游插件行为选择，模板中 `remove_bot_at_group` 默认改为 `false` 以免误删真 at。
 > - **区分消息形态**：markdown 消息（含 markdown 图片）保留真 at；纯文本单成员 at 不渲染（可升级 markdown）；富媒体图片/语音/视频（`RichMediaMessage` / `MsgType=7`，无 markdown 发图条件时使用）不支持 at，自动还原为 `@昵称` / `@全体成员` 文本，绝不把原始标签发给官方富媒体通道。
 
+> **2026-11-11 工作区变更（待提交）**
+>
+> - **适配官方 2026-09-03 群成员管理批次**（内邀白名单，11253）：
+>   - `get_group_member_list` / `get_group_member_info` 改为官方 `GET /v2/groups/{group_openid}/members[...]`，失败回退本地缓存
+>   - `set_group_kick` 接入官方批量移除 `POST /v2/groups/{group_openid}/batch_remove_members`，支持单 `user_id` 或 `user_ids` 批量（单次最多 20）
+>   - 扩展 API：`get_group_member_blacklist`、`add_group_member_blacklist`、`remove_group_member_blacklist`
+>   - 新增 `GroupAPI` 方法（v1/v2 双实现）、DTO、URI、callapi 参数与文档
+
 ---
 
 ## 四、完整提交记录（倒序）

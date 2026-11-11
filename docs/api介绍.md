@@ -1,6 +1,6 @@
 # API 介绍
 
-目前支持的 API 列表（共 49 个动作，含 2 个兼容别名）。
+目前支持的 API 列表（共 54 个动作，含兼容/同义别名）。
 
 具体 API 的定义请参考 [OneBot-11](https://github.com/botuniverse/onebot-11)。
 
@@ -30,6 +30,13 @@
 | `/delete_join_approval_strategy` | join_approval_strategy.go | 删除入群自动审批策略 |
 | `/update_join_approval_strategy_whitelist` | join_approval_strategy.go | 修改策略白名单号码 |
 | `/execute_join_approval_strategy` | join_approval_strategy.go | 执行策略（全量扫描，异步约 10 分钟） |
+| `/get_group_member_list` | get_group_member_list_group.go | 官方 GET /v2/groups/{id}/members，失败回退本地缓存 |
+| `/get_group_member_info` | get_group_member_info.go | 官方 GET /v2/groups/{id}/members/{openid}，失败回退 username 缓存 |
+| `/set_group_kick` | set_group_kick.go | 群成员移除；支持单 `user_id` 或 `user_ids` 批量（官方 batch_remove_members，单次最多20） |
+| `/batch_remove_group_members` | set_group_kick.go | `/set_group_kick` 的同义扩展名 |
+| `/get_group_member_blacklist` | group_member_blacklist.go | 查询群黑名单（内邀白名单） |
+| `/add_group_member_blacklist` | group_member_blacklist.go | 加入群黑名单（成员需不在群内，单次最多20） |
+| `/remove_group_member_blacklist` | group_member_blacklist.go | 移出群黑名单（单次最多20） |
 | `/send_group_msg`、`/send_msg`、`/send_private_msg`、`/send_guild_channel_msg`、`/send_group_msg_async`、`/send_group_msg_raw`、`/send_private_msg_async`、`/send_private_msg_sse`、`/send_private_msg_wakeup`、`/send_msg_async`、`/send_group_forward_msg` | send_*.go | 发送链路统一适配：at 转文本/真 at、FakeReply、主动消息、出站消息入库（供撤回） |
 
 ## 二、上游已有 API
@@ -41,8 +48,6 @@
 | `/get_avatar` | get_avatar.go |
 | `/get_friend_list` | get_friend_list.go |
 | `/get_group_list` | get_group_list.go |
-| `/get_group_member_info` | get_group_member_info.go |
-| `/get_group_member_list` | get_group_member_list.go |
 | `/get_guild_channel_list` | get_guild_channel_list.go |
 | `/get_guild_list` | get_guild_list.go |
 | `/get_guild_service_profile` | get_guild_service_profile.go |

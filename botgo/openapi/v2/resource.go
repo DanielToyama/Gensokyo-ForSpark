@@ -46,9 +46,13 @@ const (
 	groupRestrictChatSettingURI uri = "/v2/groups/{group_id}/restrict_chat_setting"
 	groupJoinRequestListURI     uri = "/v2/groups/{group_id}/join_request_list"
 	groupApprovalJoinRequestURI uri = "/v2/groups/{group_id}/approval_join_request/{member_id}"
+	groupMembersURI             uri = "/v2/groups/{group_id}/members"
+	groupMemberURI              uri = "/v2/groups/{group_id}/members/{member_id}"
+	groupBatchRemoveMembersURI  uri = "/v2/groups/{group_id}/batch_remove_members"
+	groupMemberBlacklistURI     uri = "/v2/groups/{group_id}/member_blacklist"
 
-	joinApprovalStrategyURI         uri = "/v2/groups/join_approval_strategy"
-	joinApprovalStrategyItemURI     uri = "/v2/groups/join_approval_strategy/{strategy_id}"
+	joinApprovalStrategyURI          uri = "/v2/groups/join_approval_strategy"
+	joinApprovalStrategyItemURI      uri = "/v2/groups/join_approval_strategy/{strategy_id}"
 	joinApprovalStrategyWhitelistURI uri = "/v2/groups/join_approval_strategy/{strategy_id}/whitelist_users"
 	joinApprovalStrategyExecuteURI   uri = "/v2/groups/join_approval_strategy/{strategy_id}/execute"
 

@@ -55,6 +55,16 @@ type GroupAPI interface {
 	SetRestrictChatSetting(ctx context.Context, groupOpenID string, setting *dto.SetRestrictChatSettingToCreate) error
 	// GetJoinRequestList 拉取入群申请列表（分页）
 	GetJoinRequestList(ctx context.Context, groupOpenID, cursor string, limit int) (*dto.JoinRequestList, error)
+	// GetGroupMembers 获取群成员列表（分页，每页最多 30 条）
+	GetGroupMembers(ctx context.Context, groupOpenID, cursor string) (*dto.GroupMemberList, error)
+	// GetGroupMember 获取单个群成员信息
+	GetGroupMember(ctx context.Context, groupOpenID, memberOpenID string) (*dto.GroupMember, error)
+	// BatchRemoveMembers 批量移除群成员（单次最多 20 个，30 QPM）
+	BatchRemoveMembers(ctx context.Context, groupOpenID string, req *dto.BatchRemoveMembersToCreate) (*dto.BatchRemoveMembersResult, error)
+	// GetGroupMemberBlacklist 查询群黑名单（分页）
+	GetGroupMemberBlacklist(ctx context.Context, groupOpenID, cursor string, limit int) (*dto.GroupMemberBlacklist, error)
+	// SetGroupMemberBlacklist 群黑名单操作: op=add 加入 / del 移出（单次最多 20 个）
+	SetGroupMemberBlacklist(ctx context.Context, groupOpenID string, req *dto.MemberBlacklistToCreate) (*dto.MemberBlacklistResult, error)
 	// ApproveJoinRequest 审批入群申请 approve/decline
 	ApproveJoinRequest(ctx context.Context, groupOpenID, memberOpenID string, req *dto.ApproveJoinRequestToCreate) error
 	// CreateJoinApprovalStrategy 创建入群自动审批策略

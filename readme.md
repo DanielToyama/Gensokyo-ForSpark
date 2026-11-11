@@ -171,7 +171,7 @@ QQ 官方机器人**不支持** OneBot v11 的 `reply` 引用段（`{"type":"rep
 |---|---|
 | **群全量消息** | 订阅后可收到群内每条消息，不要求 @bot（需官方权限） |
 | **主动消息发送** | 无被动 `msg_id` 窗口也可直接发送（需官方权限） |
-| **群管理 API** | 入群审批、申请列表、群禁言/全员禁言、机器人群内状态、入群自动审批策略 |
+| **群管理 API** | 入群审批、申请列表、群禁言/全员禁言、群成员列表/信息、批量移除成员、群黑名单、机器人群内状态、入群自动审批策略 |
 | **群管理事件** | 群成员加入/退出、入群申请、订阅消息状态 → OneBot notice/request |
 | **FakeReply 假回复** | `reply` 引用段文本伪造「回复 @昵称」 |
 | **真实 At（Markdown）** | 含 at 的群文本升级 markdown，渲染真实 @ |
@@ -248,7 +248,7 @@ settings:
 | [DanielToyama 更新记录](docs/DanielToyama更新记录.md) | 全部 45 笔提交、按能力域整理的完整改动记录（GPLv3） |
 | [适配 API 清单](docs/适配API清单.md) | 本 fork 新增/专门适配的 API、参数、事件与 HTTP 路由 |
 | [撤回消息](docs/撤回消息.md) | `delete_msg` 完整用法、四种会话对照、常见坑 |
-| [API 介绍](docs/api介绍.md) | 完整 API 文件索引（49 个动作） |
+| [API 介绍](docs/api介绍.md) | 完整 API 文件索引（54 个动作） |
 
 ## 致谢 / Acknowledgements
 
@@ -432,7 +432,7 @@ todo,正在施工中
 | /send_guild_channel_msg√ | [发送频道消息]         |
 | /send_msg√               | [发送消息]             |
 | /delete_msg√             | [撤回信息]（支持撤回机器人自己发的消息） |
-| /set_group_kick          | [群组踢人]             |
+| /set_group_kick√         | [群组踢人]（支持单人或 user_ids 批量） |
 | /set_group_ban√          | [群组单人禁言]         |
 | /set_group_whole_ban√    | [群组全员禁言]         |
 | /set_group_admin         | [群组设置管理员]       |
@@ -447,8 +447,8 @@ todo,正在施工中
 | /get_friend_list√        | [获取好友列表]         |
 | /get_group_info√          | [获取群/频道信息]     |
 | /get_group_list√         | [获取群列表]           |
-| /get_group_member_info√  | [获取群成员信息]       |
-| /get_group_member_list√  | [获取群成员列表]       |
+| /get_group_member_info√  | [获取群成员信息]（官方 v2，失败回退缓存） |
+| /get_group_member_list√  | [获取群成员列表]（官方 v2，失败回退本地） |
 | /get_group_honor_info    | [获取群荣誉信息]       |
 | /can_send_image√         | [检查是否可以发送图片] |
 | /can_send_record         | [检查是否可以发送语音] |
@@ -489,8 +489,14 @@ todo,正在施工中
 | /delete_join_approval_strategy | [删除入群自动审批策略] |
 | /update_join_approval_strategy_whitelist | [修改策略白名单号码] |
 | /execute_join_approval_strategy | [执行策略（全量扫描，异步约 10 分钟）] |
+| /get_group_member_blacklist | [查询群黑名单]（2026-09-03，内邀白名单） |
+| /add_group_member_blacklist | [加入群黑名单]（成员需不在群内，单次最多 20 个） |
+| /remove_group_member_blacklist | [移出群黑名单]（单次最多 20 个） |
+| /batch_remove_group_members | [批量移除群成员]（`/set_group_kick` 的同义扩展名） |
 
 > 兼容别名：`/get_group_ban` = `/set_group_ban`、`/get_group_whole_ban` = `/set_group_whole_ban`（上游早期误注册名，保留兼容）。
+>
+> 2026-09-03 群成员管理接口（成员列表/信息、批量移除、群黑名单）目前为官方**内邀白名单**，无权限返回 `11253`；成员列表/信息接口失败时会回退本地缓存。
 >
 > 以上 API 的参数、响应与注意事项详见 **[适配 API 清单](docs/适配API清单.md)**。
 

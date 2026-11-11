@@ -46,75 +46,22 @@ func init() {
 }
 
 func GetGroupMemberList(client callapi.Client, api openapi.OpenAPI, apiv2 openapi.OpenAPI, message callapi.ActionMessage) (string, error) {
-
-	msgType, err := idmap.ReadConfigv2(message.Params.GroupID.(string), "type")
-	if err != nil {
-		mylog.Printf("Error reading config: %v", err)
+	groupID, _ := message.Params.GroupID.(string)
+	if groupID == "" {
+		callapi.SendAPIError(client, message, "get_group_member_list: 缺少 group_id")
 		return "", nil
+	}
+
+	msgType, err := idmap.ReadConfigv2(groupID, "type")
+	if err != nil {
+		// 群类型配置可能尚未写入(应用端直接调用), 默认按群处理, 走官方成员列表
+		mylog.Printf("getGroupMemberList: 读取群类型失败(%v), 按群处理", err)
+		msgType = "group"
 	}
 
 	switch msgType {
 	case "group":
-		mylog.Printf("getGroupMemberList(group): 开始从本地获取群成员列表(请在config打开idmap-pro以缓存群成员列表)")
-		// 实现的功能
-		var members []MemberList
-
-		// 使用 message.Params.GroupID.(string) 作为 id 来调用 FindSubKeysById
-		userIDs, err := idmap.FindSubKeysByIdPro(message.Params.GroupID.(string))
-		if err != nil {
-			mylog.Printf("Error retrieving user IDs: %v", err)
-			return "", nil // 或者处理错误
-		}
-
-		// 获取当前时间的前一天，并转换为10位时间戳
-		yesterday := time.Now().AddDate(0, 0, -1).Unix()
-
-		for _, userID := range userIDs {
-			userIDInt, err := strconv.ParseUint(userID, 10, 64)
-			if err != nil {
-				mylog.Printf("Error ParseInt73: %v", err)
-			}
-			groupIDInt, err := strconv.ParseUint(message.Params.GroupID.(string), 10, 64)
-			if err != nil {
-				mylog.Printf("Error ParseInt76: %v", err)
-			}
-			joinTimeInt := int32(yesterday)
-			member := MemberList{
-				UserID:          userIDInt,
-				GroupID:         groupIDInt,
-				Nickname:        "主人",
-				Card:            "主人",
-				Sex:             "0",
-				Age:             0,
-				Area:            "0",
-				JoinTime:        joinTimeInt,
-				LastSentTime:    0,
-				Level:           "0",
-				Role:            "member",
-				Unfriendly:      false,
-				Title:           "0",
-				TitleExpireTime: 0,
-				CardChangeable:  false,
-				ShutUpTimestamp: 0,
-			}
-			members = append(members, member)
-		}
-		mylog.Printf("member message.Echors: %+v\n", message.Echo)
-
-		responseJSON := buildResponse(members, message.Echo)
-		mylog.Printf("getGroupMemberList(群): %s\n", responseJSON)
-
-		err = client.SendMessage(responseJSON)
-		if err != nil {
-			mylog.Printf("Error sending message via client: %v", err)
-		}
-		result, err := ConvertMapToJSONString(responseJSON)
-		if err != nil {
-			mylog.Printf("Error marshaling data: %v", err)
-			//todo 符合onebotv11 ws返回的错误码
-			return "", nil
-		}
-		return string(result), nil
+		return GetGroupMemberListGroup(client, apiv2, message)
 	case "private":
 		mylog.Printf("getGroupMemberList(private): 目前暂未适配私聊虚拟群场景获取虚拟群列表能力")
 		return "", nil

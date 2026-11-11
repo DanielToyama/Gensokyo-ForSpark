@@ -76,6 +76,78 @@ func (o *openAPI) GetJoinRequestList(ctx context.Context, groupOpenID, cursor st
 	return resp.Result().(*dto.JoinRequestList), nil
 }
 
+// GetGroupMembers 获取群成员列表（分页，每页最多 30 条）
+func (o *openAPI) GetGroupMembers(ctx context.Context, groupOpenID, cursor string) (*dto.GroupMemberList, error) {
+	request := o.request(ctx).
+		SetResult(dto.GroupMemberList{}).
+		SetPathParam("group_id", groupOpenID)
+	if cursor != "" {
+		request = request.SetQueryParam("cursor", cursor)
+	}
+	resp, err := request.Get(o.getURL(groupMembersURI))
+	if err != nil {
+		return nil, err
+	}
+	return resp.Result().(*dto.GroupMemberList), nil
+}
+
+// GetGroupMember 获取单个群成员信息
+func (o *openAPI) GetGroupMember(ctx context.Context, groupOpenID, memberOpenID string) (*dto.GroupMember, error) {
+	resp, err := o.request(ctx).
+		SetResult(dto.GroupMember{}).
+		SetPathParam("group_id", groupOpenID).
+		SetPathParam("member_id", memberOpenID).
+		Get(o.getURL(groupMemberURI))
+	if err != nil {
+		return nil, err
+	}
+	return resp.Result().(*dto.GroupMember), nil
+}
+
+// BatchRemoveMembers 批量移除群成员（单次最多 20 个）
+func (o *openAPI) BatchRemoveMembers(ctx context.Context, groupOpenID string, req *dto.BatchRemoveMembersToCreate) (*dto.BatchRemoveMembersResult, error) {
+	resp, err := o.request(ctx).
+		SetResult(dto.BatchRemoveMembersResult{}).
+		SetPathParam("group_id", groupOpenID).
+		SetBody(req).
+		Post(o.getURL(groupBatchRemoveMembersURI))
+	if err != nil {
+		return nil, err
+	}
+	return resp.Result().(*dto.BatchRemoveMembersResult), nil
+}
+
+// GetGroupMemberBlacklist 查询群黑名单（分页）
+func (o *openAPI) GetGroupMemberBlacklist(ctx context.Context, groupOpenID, cursor string, limit int) (*dto.GroupMemberBlacklist, error) {
+	request := o.request(ctx).
+		SetResult(dto.GroupMemberBlacklist{}).
+		SetPathParam("group_id", groupOpenID)
+	if cursor != "" {
+		request = request.SetQueryParam("cursor", cursor)
+	}
+	if limit > 0 {
+		request = request.SetQueryParam("limit", strconv.Itoa(limit))
+	}
+	resp, err := request.Get(o.getURL(groupMemberBlacklistURI))
+	if err != nil {
+		return nil, err
+	}
+	return resp.Result().(*dto.GroupMemberBlacklist), nil
+}
+
+// SetGroupMemberBlacklist 群黑名单操作: op=add 加入 / del 移出
+func (o *openAPI) SetGroupMemberBlacklist(ctx context.Context, groupOpenID string, req *dto.MemberBlacklistToCreate) (*dto.MemberBlacklistResult, error) {
+	resp, err := o.request(ctx).
+		SetResult(dto.MemberBlacklistResult{}).
+		SetPathParam("group_id", groupOpenID).
+		SetBody(req).
+		Post(o.getURL(groupMemberBlacklistURI))
+	if err != nil {
+		return nil, err
+	}
+	return resp.Result().(*dto.MemberBlacklistResult), nil
+}
+
 // ApproveJoinRequest 审批入群申请: op=approve 通过 / decline 拒绝
 func (o *openAPI) ApproveJoinRequest(ctx context.Context, groupOpenID, memberOpenID string, req *dto.ApproveJoinRequestToCreate) error {
 	_, err := o.request(ctx).

@@ -4,20 +4,24 @@ package handlers
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
 
 	"github.com/hoshinonyaruko/gensokyo/callapi"
+	"github.com/hoshinonyaruko/gensokyo/config"
 	"github.com/hoshinonyaruko/gensokyo/idmap"
 	"github.com/tencent-connect/botgo/dto"
 )
 
+var reOpenID = regexp.MustCompile(`^[0-9a-fA-F]{32}$`)
+
 // 群聊管理 handler 公共辅助函数
 
 // [DanielToyama] BuildJoinRequestComment 计算入群申请的展示文本(onebot request.group 的 comment / 申请列表条目的 comment 增强)
-// - 问答验证(admin_review_qa): 官方不回填 verify_message, 问题和用户回答在 review_qa_list; 按 **onebot 标准格式**
-//   拼接为 "问题：<问题>\n答案：<答案>"(全角冒号, 多组问答依序换行; 无回答时省略"答案："行)
-// - 其余方式: 取 verify_message 原文
-// - apply_source=invited(被邀请): 为空时兜底 "被邀请入群"
+//   - 问答验证(admin_review_qa): 官方不回填 verify_message, 问题和用户回答在 review_qa_list; 按 **onebot 标准格式**
+//     拼接为 "问题：<问题>\n答案：<答案>"(全角冒号, 多组问答依序换行; 无回答时省略"答案："行)
+//   - 其余方式: 取 verify_message 原文
+//   - apply_source=invited(被邀请): 为空时兜底 "被邀请入群"
 func BuildJoinRequestComment(method, verifyMessage, applySource string, qaList []dto.ReviewQA) string {
 	comment := ""
 	switch method {
@@ -76,12 +80,21 @@ func groupResponse(data interface{}, message callapi.ActionMessage) map[string]i
 	return resp
 }
 
-// resolveGroupOpenID 通过 idmap 反查真实群 openid (int格式 -> openid)
+// resolveGroupOpenID 通过 idmap 反查真实群 openid; string_ob11 模式下应用端传的就是 openid
 func resolveGroupOpenID(groupID string) (string, error) {
+	if config.GetStringOb11() {
+		return groupID, nil
+	}
 	return idmap.RetrieveRowByIDv2(groupID)
 }
 
-// resolveUserOpenID 通过 idmap 反查真实用户 openid (int格式 -> openid)
+// resolveUserOpenID 通过 idmap 反查真实用户 openid; 兼容 string_ob11 与直接传 openid
 func resolveUserOpenID(userID string) (string, error) {
+	if userID == "" {
+		return "", nil
+	}
+	if config.GetStringOb11() || reOpenID.MatchString(userID) {
+		return userID, nil
+	}
 	return idmap.RetrieveRowByIDv2(userID)
 }

@@ -104,6 +104,13 @@ type ParamsContent struct {
 	GroupActionGroupOpenIDs []string               `json:"group_action_group_openids,omitempty"` // 关联群操作-openid 列表
 	GroupActionGroupIDs     []string               `json:"group_action_group_ids,omitempty"`     // 关联群操作-群号列表
 	Members                 []MemberMuteStateParam `json:"members,omitempty"`                    // 群禁言成员列表(原始扩展API用)
+
+	// [新增] 群成员管理 (2026-09-03)
+	UserIDs              []string `json:"user_ids,omitempty"`                // 批量移除成员: 应用端用户ID列表
+	MemberOpenIDs        []string `json:"member_openids,omitempty"`          // 官方 openid 列表(直接透传)
+	AddToMemberBlacklist bool     `json:"add_to_member_blacklist,omitempty"` // 移除成员时同步加入群黑名单
+	RejectAddRequest     bool     `json:"reject_add_request,omitempty"`      // OneBot set_group_kick 兼容字段
+	Op                   string   `json:"op,omitempty"`                      // 群黑名单操作: add/del
 }
 
 // MemberMuteStateParam 设置群成员禁言的单项参数

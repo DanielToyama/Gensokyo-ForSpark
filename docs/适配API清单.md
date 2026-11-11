@@ -135,6 +135,8 @@
 | `set_group_add_request` | 支持只传 `flag`，从入群申请事件缓存反查群/成员 openid；`approve` 语义对齐 OneBot（`true` 通过，否则拒绝）。见上文 |
 | `set_group_ban` | 补上群聊分支：官方 `restrict_chat_setting` 成员级禁言；`duration=0` 解禁。同时注册标准动作名（旧版误注册为 `get_group_ban`） |
 | `set_group_whole_ban` | 补上群聊分支：`global_rule.mode=always/none`（best-effort）。同时注册标准动作名（旧版误注册为 `get_group_whole_ban`） |
+| `set_group_kick` | 接入官方 `batch_remove_members`：支持单 `user_id` 或 `user_ids` 批量（单次最多 20），可同步加入群黑名单；同义扩展名 `batch_remove_group_members` |
+| `get_group_member_list` / `get_group_member_info` | 接入官方 2026-09-03 群成员接口；列表自动翻页，失败回退本地缓存/username 缓存 |
 | `get_group_info` | 群类型返回**官方真实群信息**（`group_name` / `group_memo` / `member_count`），接口失败回退原模拟数据（「测试群」） |
 | `get_status` | 重写为 LLOneBot bot 状态结构：`data.{online,good,stat}` + 顶层 `wording`；`stat` 含真实 `message_received` / `message_sent` / `last_message_time` / `startup_time` |
 | `send_group_msg` / `send_msg` / `send_private_msg` 等发送链路 | ① 出站 at 段转 `@昵称` 文本（昵称缓存优先）；② `at_markdown` 开启时含 at 的群纯文本升级 markdown 真 at；③ `fake_reply` 开启时 `reply` 段文本伪造；④ 主动消息 `allow_proactive_msg`；⑤ 发送成功后出站消息入库，供撤回/fakeReply |
@@ -244,3 +246,79 @@ text_intent:
 | markdown 消息（含 markdown 图片 / `qqbot-media://`） | ✅ | `<qqbot-at-user>` / `<qqbot-at-everyone />` 保留 |
 | 纯文本 | ⚠️ | 单成员 at 不渲染，`at_markdown` 开启时升级 markdown；`@全体成员` 文本直接支持 |
 | 富媒体（`RichMediaMessage` / `MsgType=7`，图片/语音/视频） | ❌ | 官方富媒体通道不支持 at 标签，适配层还原为 `@昵称` / `@全体成员` 文本 |
+
+---
+
+## 七、群成员管理（2026-09-03，内邀白名单）
+
+> 官方 2026-09-03 新增的群成员管理接口目前为**内邀接入**：仅白名单机器人可用，无权限时返回错误码 `11253`（应用无接口访问权限），需联系平台运营申请。以下接口均已适配；非白名单机器人调用会返回标准失败响应。
+
+### 1. `get_group_member_list` — 获取群成员列表
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `group_id` | string/int | 是 | 群 ID（应用端压缩 ID；`string_ob11` 时为群 openid） |
+| `cursor` | string | 否 | 分页游标，首页留空 |
+
+- 官方接口：`GET /v2/groups/{group_openid}/members`
+- 每页最多 30 条，适配层自动翻页聚合后返回完整列表
+- 响应 `data` 为成员数组：`user_id`、`group_id`、`nickname`、`card`、`role`、`join_time`、`member_openid`、`bot` 等
+- 官方接口失败（含无 11253 权限）时回退本地 idmap-pro 缓存
+
+### 2. `get_group_member_info` — 获取群成员信息
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `group_id` | string/int | 是 | 群 ID |
+| `user_id` | string/int | 是 | 成员 ID |
+
+- 官方接口：`GET /v2/groups/{group_openid}/members/{member_openid}`
+- 响应 `data` 为单个成员对象（字段同列表）
+- 官方接口失败时回退 `idmap` 的 username 缓存构造最小成员信息
+
+### 3. `set_group_kick` — 群成员移除（OneBot 标准动作，支持批量）
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `group_id` | string/int | 是 | 群 ID |
+| `user_id` | string/int | 否* | 单个成员 ID（OneBot 标准写法） |
+| `user_ids` | []string | 否* | 批量成员 ID（扩展） |
+| `member_openids` | []string | 否* | 直接传官方 openid（扩展） |
+| `add_to_member_blacklist` | bool | 否 | 移除时同步加入群黑名单 |
+| `reject_add_request` | bool | 否 | OneBot 兼容字段，等同 `add_to_member_blacklist` |
+
+\* 三者至少提供一个；单次最多 20 个成员。
+
+- 官方接口：`POST /v2/groups/{group_openid}/batch_remove_members`
+- 同义扩展 action：`batch_remove_group_members`
+- 响应 `data`：`remove_members_result`、`add_to_member_blacklist_fail_openids`、`add_to_member_blacklist_fail_user_ids`
+- 频率 30 QPM；无内邀权限返回 11253
+
+### 4. `get_group_member_blacklist` — 查询群黑名单
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `group_id` | string/int | 是 | 群 ID |
+| `cursor` | string | 否 | 分页游标 |
+| `limit` | int | 否 | 单页数量，默认 20，最大 100 |
+
+- 官方接口：`GET /v2/groups/{group_openid}/member_blacklist`
+- 响应 `data`：`{"users":[{user_id,nickname,member_openid,union_openid,banned_at,bot}],"next_cursor":"..."}`
+- 频率 30 QPM
+
+### 5. `add_group_member_blacklist` / `remove_group_member_blacklist` — 群黑名单操作
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `group_id` | string/int | 是 | 群 ID |
+| `user_id` | string/int | 否* | 单个成员 ID |
+| `user_ids` | []string | 否* | 批量成员 ID |
+| `member_openids` | []string | 否* | 直接传官方 openid |
+
+\* 至少提供一个；单次最多 20 个成员。
+
+- 官方接口：`POST /v2/groups/{group_openid}/member_blacklist`
+  - `add_group_member_blacklist` → `op=add`（要求成员当前不在群内）
+  - `remove_group_member_blacklist` → `op=del`
+- 响应 `data`：`{"op":"add|del","fail_openids":[...],"fail_user_ids":[...]}`
+- 频率 60 QPM；无内邀权限返回 11253

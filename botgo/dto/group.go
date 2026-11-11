@@ -24,11 +24,11 @@ type GroupInfo struct {
 
 // GroupBotState 机器人群内状态
 type GroupBotState struct {
-	MemberOpenID       string `json:"member_openid"`        // 机器人的 openid
-	JoinedAt           string `json:"joined_at"`            // 入群时间戳（RFC3339格式）
-	AllowProactiveMsg  bool   `json:"allow_proactive_msg"`  // 是否接收主动推送
-	RecvMsgSetting     string `json:"recv_msg_setting"`     // 接收消息的类型: all/only_mention/mention_and_context
-	MemberRole         string `json:"member_role"`          // 群成员角色: member/owner/admin
+	MemberOpenID      string `json:"member_openid"`       // 机器人的 openid
+	JoinedAt          string `json:"joined_at"`           // 入群时间戳（RFC3339格式）
+	AllowProactiveMsg bool   `json:"allow_proactive_msg"` // 是否接收主动推送
+	RecvMsgSetting    string `json:"recv_msg_setting"`    // 接收消息的类型: all/only_mention/mention_and_context
+	MemberRole        string `json:"member_role"`         // 群成员角色: member/owner/admin
 }
 
 // GlobalMuteRule 群级禁言规则（全员禁言配置）
@@ -49,7 +49,7 @@ type MuteScheduleRule struct {
 // MuteRecurringRule 周期禁言规则
 type MuteRecurringRule struct {
 	TaskID    string `json:"task_id"`
-	Weekdays  []int  `json:"weekdays"`  // 1~7（1=周一）
+	Weekdays  []int  `json:"weekdays"`   // 1~7（1=周一）
 	StartTime string `json:"start_time"` // HH:mm（北京时间）
 	EndTime   string `json:"end_time"`   // HH:mm（北京时间）
 	Enabled   bool   `json:"enabled"`
@@ -57,15 +57,15 @@ type MuteRecurringRule struct {
 
 // MemberMuteState 被禁言成员状态
 type MemberMuteState struct {
-	MemberOpenID  string `json:"member_openid"`
-	MuteExpireAt  string `json:"mute_expire_at"` // RFC3339
-	Username      string `json:"username"`
-	UnionOpenID   string `json:"union_openid"`
+	MemberOpenID string `json:"member_openid"`
+	MuteExpireAt string `json:"mute_expire_at"` // RFC3339
+	Username     string `json:"username"`
+	UnionOpenID  string `json:"union_openid"`
 }
 
 // GroupRestrictChatSetting 群禁言状态（查询返回值）
 type GroupRestrictChatSetting struct {
-	GlobalRule *GlobalMuteRule  `json:"global_rule"`
+	GlobalRule *GlobalMuteRule   `json:"global_rule"`
 	Members    []MemberMuteState `json:"members"`
 }
 
@@ -80,15 +80,15 @@ type SetMemberMuteState struct {
 // 说明: 官方当前文档中 POST /restrict_chat_setting 仅声明 members 字段（成员级禁言），
 // 全员禁言的 global_rule 仅在查询接口返回；此处额外保留 GlobalRule 字段以便兼容平台后续能力。
 type SetRestrictChatSettingToCreate struct {
-	GlobalRule *GlobalMuteRule      `json:"global_rule,omitempty"`
+	GlobalRule *GlobalMuteRule       `json:"global_rule,omitempty"`
 	Members    []*SetMemberMuteState `json:"members,omitempty"`
 }
 
 // VerifyInfo 用户入群验证方式
 type VerifyInfo struct {
-	Method         string      `json:"method"` // verify_message / admin_review_qa
-	VerifyMessage  string      `json:"verify_message"`
-	ReviewQAList   []ReviewQA  `json:"review_qa_list"`
+	Method        string     `json:"method"` // verify_message / admin_review_qa
+	VerifyMessage string     `json:"verify_message"`
+	ReviewQAList  []ReviewQA `json:"review_qa_list"`
 }
 
 // ReviewQA 入群问答
@@ -97,18 +97,74 @@ type ReviewQA struct {
 	Answer   string `json:"answer"`
 }
 
+// ***************** 群成员管理 (2026-09-03) *****************
+
+// GroupMember 群成员信息 (获取群成员列表 / 获取群成员信息)
+type GroupMember struct {
+	MemberOpenID string `json:"member_openid"`
+	Username     string `json:"username"`
+	MemberRole   string `json:"member_role"` // member / admin / owner
+	Bot          bool   `json:"bot"`
+	JoinedAt     string `json:"joined_at"` // RFC3339
+	UnionOpenID  string `json:"union_openid,omitempty"`
+}
+
+// GroupMemberList 群成员列表（分页，每页最多 30 条）
+type GroupMemberList struct {
+	Members    []*GroupMember `json:"members"`
+	NextCursor string         `json:"next_cursor"` // 空串表示已到末页
+}
+
+// BatchRemoveMembersToCreate 批量移除群成员请求体（单次最多 20 个）
+type BatchRemoveMembersToCreate struct {
+	MemberOpenIDs        []string `json:"member_openids"`
+	AddToMemberBlacklist bool     `json:"add_to_member_blacklist,omitempty"`
+}
+
+// BatchRemoveMembersResult 批量移除群成员返回
+type BatchRemoveMembersResult struct {
+	RemoveMembersResult             string   `json:"remove_members_result"`                // success
+	AddToMemberBlacklistFailOpenIDs []string `json:"add_to_member_blacklist_fail_openids"` // 加黑名单失败的 openid
+}
+
+// GroupMemberBlacklistUser 群黑名单用户
+type GroupMemberBlacklistUser struct {
+	UnionOpenID  string `json:"union_openid"`
+	MemberOpenID string `json:"member_openid"`
+	Username     string `json:"username"`
+	BannedAt     string `json:"banned_at"` // RFC3339
+	Bot          bool   `json:"bot"`
+}
+
+// GroupMemberBlacklist 群黑名单列表（分页）
+type GroupMemberBlacklist struct {
+	Users      []*GroupMemberBlacklistUser `json:"users"`
+	NextCursor string                      `json:"next_cursor"`
+}
+
+// MemberBlacklistToCreate 群黑名单操作请求体 (op=add 加入 / del 移出, 单次最多 20 个)
+type MemberBlacklistToCreate struct {
+	Op            string   `json:"op"`
+	MemberOpenIDs []string `json:"member_openids"`
+}
+
+// MemberBlacklistResult 群黑名单操作返回
+type MemberBlacklistResult struct {
+	FailOpenIDs []string `json:"fail_openids"`
+}
+
 // JoinRequest 入群申请
 type JoinRequest struct {
-	JoinRequestID  string      `json:"join_request_id"`
-	RiskTips       string      `json:"risk_tips"` // warning_tips / top_tips
-	UnionOpenID    string      `json:"union_openid"`
-	MemberOpenID   string      `json:"member_openid"`
-	Username       string      `json:"username"`
-	ApplyAt        string      `json:"apply_at"` // RFC3339
-	ApplySource    string      `json:"apply_source"` // self_apply 主动申请, invited 被邀请
-	InvitedBy      string      `json:"invited_by"`
-	Bot            bool        `json:"bot"`
-	VerifyInfo     *VerifyInfo `json:"verify_info"`
+	JoinRequestID string      `json:"join_request_id"`
+	RiskTips      string      `json:"risk_tips"` // warning_tips / top_tips
+	UnionOpenID   string      `json:"union_openid"`
+	MemberOpenID  string      `json:"member_openid"`
+	Username      string      `json:"username"`
+	ApplyAt       string      `json:"apply_at"`     // RFC3339
+	ApplySource   string      `json:"apply_source"` // self_apply 主动申请, invited 被邀请
+	InvitedBy     string      `json:"invited_by"`
+	Bot           bool        `json:"bot"`
+	VerifyInfo    *VerifyInfo `json:"verify_info"`
 }
 
 // JoinRequestList 入群申请列表（分页）
@@ -169,15 +225,15 @@ type GroupAction struct {
 
 // UpdateJoinApprovalStrategyToCreate 修改入群自动审批策略请求体
 type UpdateJoinApprovalStrategyToCreate struct {
-	IsEnable   string       `json:"is_enable,omitempty"` // on-启用 off-关闭
-	ExpireAt   string       `json:"expire_at,omitempty"`
+	IsEnable    string       `json:"is_enable,omitempty"` // on-启用 off-关闭
+	ExpireAt    string       `json:"expire_at,omitempty"`
 	GroupAction *GroupAction `json:"group_action,omitempty"`
-	Remark     string       `json:"remark,omitempty"`
+	Remark      string       `json:"remark,omitempty"`
 }
 
 // WhitelistUsersToCreate 修改策略白名单号码请求体
 type WhitelistUsersToCreate struct {
-	Op            string   `json:"op"` // add 新增号码, del 删除号码
+	Op             string   `json:"op"`              // add 新增号码, del 删除号码
 	WhitelistUsers []string `json:"whitelist_users"` // QQ号码列表(字符串)
 }
 
@@ -192,7 +248,7 @@ type WhitelistUpdateResult struct {
 
 // GroupMemberAddEvent 群成员加入事件 (GROUP_MEMBER_ADD)
 type GroupMemberAddEvent struct {
-	Timestamp    interface{} `json:"timestamp"`    // Unix 秒
+	Timestamp    interface{} `json:"timestamp"` // Unix 秒
 	GroupOpenID  string      `json:"group_openid"`
 	MemberOpenID string      `json:"member_openid"`
 	UserOpenID   string      `json:"user_openid"` // 跨应用统一标识, 可能为空
@@ -200,7 +256,7 @@ type GroupMemberAddEvent struct {
 
 // GroupMemberRemoveEvent 群成员退出事件 (GROUP_MEMBER_REMOVE)
 type GroupMemberRemoveEvent struct {
-	Timestamp    interface{} `json:"timestamp"`    // Unix 秒
+	Timestamp    interface{} `json:"timestamp"` // Unix 秒
 	GroupOpenID  string      `json:"group_openid"`
 	MemberOpenID string      `json:"member_openid"`
 	UserOpenID   string      `json:"user_openid"` // 可能为空
@@ -209,18 +265,18 @@ type GroupMemberRemoveEvent struct {
 // GroupJoinRequestEvent 用户申请加群事件 (GROUP_JOIN_REQUEST)
 // 注意: 只有当机器人是群管理员时才可以收到此事件。
 type GroupJoinRequestEvent struct {
-	GroupOpenID    string     `json:"group_openid"`
-	JoinRequestID  string     `json:"join_request_id"`
-	RiskTips       string     `json:"risk_tips"`
-	UnionOpenID    string     `json:"union_openid"`
-	MemberOpenID   string     `json:"member_openid"`
-	Username       string     `json:"username"`
-	ApplyAt        string     `json:"apply_at"`     // RFC3339
-	ApplySource    string     `json:"apply_source"` // self_apply 主动申请, invited 被邀请
-	InvitedBy      string     `json:"invited_by"`
-	Bot            bool       `json:"bot"`
-	VerifyInfo     *VerifyInfo `json:"verify_info"`
-	AutoApproved   *AutoApproved `json:"auto_approved,omitempty"` // 只在事件中携带
+	GroupOpenID   string        `json:"group_openid"`
+	JoinRequestID string        `json:"join_request_id"`
+	RiskTips      string        `json:"risk_tips"`
+	UnionOpenID   string        `json:"union_openid"`
+	MemberOpenID  string        `json:"member_openid"`
+	Username      string        `json:"username"`
+	ApplyAt       string        `json:"apply_at"`     // RFC3339
+	ApplySource   string        `json:"apply_source"` // self_apply 主动申请, invited 被邀请
+	InvitedBy     string        `json:"invited_by"`
+	Bot           bool          `json:"bot"`
+	VerifyInfo    *VerifyInfo   `json:"verify_info"`
+	AutoApproved  *AutoApproved `json:"auto_approved,omitempty"` // 只在事件中携带
 }
 
 // AutoApproved 自动审批通过的扩展信息
