@@ -26,8 +26,8 @@ import (
 	"github.com/hoshinonyaruko/gensokyo/echo"
 	"github.com/hoshinonyaruko/gensokyo/idmap"
 	"github.com/hoshinonyaruko/gensokyo/images"
-	"github.com/hoshinonyaruko/gensokyo/mylog"
 	"github.com/hoshinonyaruko/gensokyo/msgmap"
+	"github.com/hoshinonyaruko/gensokyo/mylog"
 	"github.com/hoshinonyaruko/gensokyo/structs"
 	"github.com/hoshinonyaruko/gensokyo/url"
 	"github.com/skip2/go-qrcode"
@@ -1155,6 +1155,12 @@ func transformMessageTextAtNoGroupID(messageText string) string {
 
 // 链接处理
 func transformMessageTextUrl(messageText string, message callapi.ActionMessage, client callapi.Client, api openapi.OpenAPI, apiv2 openapi.OpenAPI) string {
+	// [新增] 网址回退方案: 将所有 URL 中的 "." 替换为 "·", 避免 QQ 域名校验/拦截
+	// 优先级最高: 开启后不再走二维码/短链, 链接作为普通文本显示
+	if config.GetUrlDotFallback() {
+		return replaceUrlDots(messageText)
+	}
+
 	// 是否处理url
 	if config.GetTransferUrl() {
 		// 判断服务器地址是否是IP地址
@@ -1200,6 +1206,14 @@ func transformMessageTextUrl(messageText string, message callapi.ActionMessage, 
 		})
 	}
 	return messageText
+}
+
+// replaceUrlDots 将消息中所有 URL 的 "." 替换为 "·"
+// 仅处理 xurls 识别出的 URL, 不影响普通中文/数字中的句点
+func replaceUrlDots(messageText string) string {
+	return xurls.Relaxed.ReplaceAllStringFunc(messageText, func(originalURL string) string {
+		return strings.ReplaceAll(originalURL, ".", "·")
+	})
 }
 
 // processActionMessageWithBase64PicReplace 将原有的callapi.ActionMessage内容替换为一个base64图片

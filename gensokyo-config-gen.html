@@ -171,13 +171,14 @@ h1 { font-size: 20px; font-weight: 600; color: #1e293b; margin-bottom: 6px; }
 
 <div class="card">
   <h2>⑤ 链接发送方式（消息里的 URL 怎么发）</h2>
-  <div style="font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:10px 14px;margin-bottom:14px">⚠️ QQ官方机器人对消息里的链接有域名校验（陌生域名可能被拦截/不可点），gsk 提供两种规避方式，选一种即可。</div>
+  <div style="font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:10px 14px;margin-bottom:14px">⚠️ QQ官方机器人对消息里的链接有域名校验（陌生域名可能被拦截/不可点），gsk 提供多种规避方式，选一种即可。</div>
   <div class="field">
     <label>链接发送方式</label>
     <div class="radio-group">
       <label class="radio-item"><input type="radio" name="link_mode" value="qr" checked onchange="updateServerDirState()"> 二维码模式（推荐）：链接转成二维码图片发出，无需域名/端口</label>
       <label class="radio-item"><input type="radio" name="link_mode" value="short" onchange="updateServerDirState()"> 短链模式：链接转成「你的域名/url/xxx」短链（需填下面的域名 + QQ 后台校验域名）</label>
       <label class="radio-item"><input type="radio" name="link_mode" value="raw" onchange="updateServerDirState()"> 不转换：原样发送（可能被官方拦截或不可点击）</label>
+      <label class="radio-item"><input type="radio" name="link_mode" value="dot" onchange="updateServerDirState()"> 点号替换（回退）：链接中的 . 替换为 ·，避免域名校验/拦截</label>
     </div>
   </div>
   <div class="field">
@@ -324,11 +325,13 @@ function generate() {
   const at_remove_bot = document.querySelector('input[name="at_remove_bot"]:checked').value;
   // 链接发送方式: qr=二维码 / short=短链 / raw=不转换
   const link_mode = document.querySelector('input[name="link_mode"]:checked').value;
-  let transfer_url = 'false', url_to_qrimage = 'false', visible_ip = 'false';
+  let transfer_url = 'false', url_to_qrimage = 'false', visible_ip = 'false', url_dot_fallback = 'false';
   if (link_mode === 'qr') {
     transfer_url = 'true'; url_to_qrimage = 'true'; visible_ip = 'true';
   } else if (link_mode === 'short') {
     transfer_url = 'true';
+  } else if (link_mode === 'dot') {
+    url_dot_fallback = 'true';
   }
   if (link_mode === 'short' && !server_dir) {
     showMsg('短链模式需要在"⑤ 链接发送方式"里填写你的域名 (server_dir)', false);
@@ -373,6 +376,7 @@ ${intentLines}
   transfer_url : ${transfer_url}
   url_to_qrimage : ${url_to_qrimage}
   visible_ip : ${visible_ip}
+  url_dot_fallback : ${url_dot_fallback}
   qr_size : 300
 
   #正向ws设置

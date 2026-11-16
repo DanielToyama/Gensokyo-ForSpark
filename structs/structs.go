@@ -145,10 +145,11 @@ type Settings struct {
 	StringOb11       bool `yaml:"string_ob11"`
 	StringAction     bool `yaml:"string_action"`
 	//url相关
-	VisibleIp    bool `yaml:"visible_ip"`
-	UrlToQrimage bool `yaml:"url_to_qrimage"`
-	QrSize       int  `yaml:"qr_size"`
-	TransferUrl  bool `yaml:"transfer_url"`
+	VisibleIp      bool `yaml:"visible_ip"`
+	UrlToQrimage   bool `yaml:"url_to_qrimage"`
+	QrSize         int  `yaml:"qr_size"`
+	TransferUrl    bool `yaml:"transfer_url"`
+	UrlDotFallback bool `yaml:"url_dot_fallback"`
 	//框架修改
 	Title        string `yaml:"title"`
 	FrpPort      string `yaml:"frp_port"`

@@ -1390,6 +1390,18 @@ func GetTransferUrl() bool {
 	return instance.Settings.TransferUrl
 }
 
+// 获取UrlDotFallback的值 (网址回退: 将URL中的"."替换为"·")
+func GetUrlDotFallback() bool {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	if instance == nil {
+		fmt.Println("Warning: instance is nil when trying to GetUrlDotFallback value.")
+		return false
+	}
+	return instance.Settings.UrlDotFallback
+}
+
 // 获取 HTTP 地址
 func GetHttpAddress() string {
 	mu.RLock()

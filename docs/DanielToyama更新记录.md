@@ -185,6 +185,8 @@ WS 全部掉线时的兜底回复，改动见 `Processor/Processor.go` 的 `Broa
 > - **修复配置生成器 YAML 格式错误**：① JS 模板字符串注释里的 `\n` 会被解释为真实换行，导致生成的 `config.yml` 在「假回复」注释处解析失败（已改为单行描述）；② 对 `client_secret`、`ws_server_token`、`server_dir`、`port`、`downtime_message` 等用户输入统一做 YAML 双引号转义，避免引号/反斜杠/换行导致解析失败；同时校验 `app_id`/`uin` 为纯数字。
 > - **修正「④ 群消息 @ 设置」说明**：官方并非“完全不支持真 @”——群 markdown 消息可渲染 `<qqbot-at-user>`（`at_markdown` 默认开启），纯文本单成员 at 才降级为 @昵称；三个开关（`remove_at`/`add_at_group`/`remove_bot_at_group`）按下游插件行为选择，模板中 `remove_bot_at_group` 默认改为 `false` 以免误删真 at。
 > - **区分消息形态**：markdown 消息（含 markdown 图片）保留真 at；纯文本单成员 at 不渲染（可升级 markdown）；富媒体图片/语音/视频（`RichMediaMessage` / `MsgType=7`，无 markdown 发图条件时使用）不支持 at，自动还原为 `@昵称` / `@全体成员` 文本，绝不把原始标签发给官方富媒体通道。
+> - **@全体成员发送失败回退**：官方因无权限、管理员未授权、每日次数用完（304019）等拒绝整条消息时，自动去掉 `<qqbot-at-everyone />` 标签后重试一次，保证正文仍能发出；超时错误不重试以避免重复发送（实现位于 `botgo/openapi/v2/message.go` 的 `PostGroupMessage`，覆盖所有群消息发送路径）。
+> - **新增网址回退 `url_dot_fallback`**：开启后将消息中所有 URL 的 `.` 替换为 `·`（如 `example.com` → `example·com`），让链接以普通文本显示、规避 QQ 域名校验/拦截；优先级高于二维码/短链模式。配置生成器 ⑤ 增加「点号替换（回退）」选项。
 
 > **2026-11-11 工作区变更（待提交）**
 >

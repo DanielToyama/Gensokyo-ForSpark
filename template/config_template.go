@@ -191,6 +191,7 @@ settings:
   url_to_qrimage : false            #将信息中的url转换为二维码单独作为图片发出,需要同时设置  #SSL配置类 机器人发送URL设置 的 transfer_url 为 true visible_ip也需要为true
   qr_size : 200                     #二维码尺寸,单位像素
   transfer_url : true                #默认开启,关闭后自理url发送,配置server_dir为你的域名,配置crt和key后,将域名/url和/image在q.qq.com后台通过校验,自动使用302跳转处理机器人发出的所有域名.
+  url_dot_fallback : false           #网址回退方案: 将消息中所有URL的"."替换为"·", 避免QQ域名校验/拦截; 开启后优先于二维码/短链模式(链接会变成不可点击的文本)
 
   #框架修改
   title : "Gensokyo © 2023 - Hoshinonyaruko"              #程序的标题 如果多个机器人 可根据标题区分

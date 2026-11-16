@@ -5,13 +5,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/tidwall/gjson"
 
 	"github.com/tencent-connect/botgo/dto"
 	"github.com/tencent-connect/botgo/errs"
+	"github.com/tencent-connect/botgo/log"
 	"github.com/tencent-connect/botgo/openapi"
 )
 
@@ -236,26 +239,40 @@ func getGroupURLBySendType(msgType dto.SendType) uri {
 }
 
 // PostGroupMessage 回复群消息
+// @全体成员回退: 官方对 @全体成员 有权限/每日次数限制, 失败时整条消息会被拒绝;
+// 这里检测到消息含 <qqbot-at-everyone /> 且发送失败(非超时)时, 去掉标签后重试一次,
+// 保证正文仍能发出。
 func (o *openAPIv2) PostGroupMessage(ctx context.Context, groupID string, msg dto.APIMessage) (*dto.GroupMessageResponse, error) {
 	var resp *resty.Response
 	var err error
 
-	msgType := msg.GetSendType()
-	switch msgType {
-	case dto.RichMedia:
-		resp, err = o.request(ctx).
-			SetResult(dto.MediaResponse{}). // 设置为媒体响应类型
-			SetPathParam("group_id", groupID).
-			SetBody(msg).
-			Post(o.getURL(getGroupURLBySendType(msgType)))
-	default:
-		resp, err = o.request(ctx).
-			SetResult(dto.Message{}). // 设置为消息类型
-			SetPathParam("group_id", groupID).
-			SetBody(msg).
-			Post(o.getURL(getGroupURLBySendType(msgType)))
+	post := func(m dto.APIMessage, msgType dto.SendType) (*resty.Response, error) {
+		switch msgType {
+		case dto.RichMedia:
+			return o.request(ctx).
+				SetResult(dto.MediaResponse{}). // 设置为媒体响应类型
+				SetPathParam("group_id", groupID).
+				SetBody(m).
+				Post(o.getURL(getGroupURLBySendType(msgType)))
+		default:
+			return o.request(ctx).
+				SetResult(dto.Message{}). // 设置为消息类型
+				SetPathParam("group_id", groupID).
+				SetBody(m).
+				Post(o.getURL(getGroupURLBySendType(msgType)))
+		}
 	}
 
+	msgType := msg.GetSendType()
+	resp, err = post(msg, msgType)
+	if err != nil && !isTimeoutError(err) {
+		if stripped, ok := stripAtEveryone(msg); ok {
+			log.Infof("@全体成员发送失败(%v), 去掉@全体成员后重试正文", err)
+			msg = stripped
+			msgType = msg.GetSendType()
+			resp, err = post(msg, msgType)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -269,6 +286,46 @@ func (o *openAPIv2) PostGroupMessage(ctx context.Context, groupID string, msg dt
 	}
 
 	return result, nil
+}
+
+var atEveryoneTagRE = regexp.MustCompile(`(?i)<qqbot-at-everyone\s*/>`)
+
+// stripAtEveryone 复制一份消息并去掉 @全体成员 标签; 原对象不改, 避免影响调用方重试/队列
+func stripAtEveryone(msg dto.APIMessage) (dto.APIMessage, bool) {
+	m, ok := msg.(*dto.MessageToCreate)
+	if !ok || m == nil {
+		return msg, false
+	}
+	changed := false
+	clone := *m
+	if atEveryoneTagRE.MatchString(clone.Content) {
+		clone.Content = atEveryoneTagRE.ReplaceAllString(clone.Content, "")
+		changed = true
+	}
+	if m.Markdown != nil {
+		md := *m.Markdown
+		if atEveryoneTagRE.MatchString(md.Content) {
+			md.Content = atEveryoneTagRE.ReplaceAllString(md.Content, "")
+			clone.Markdown = &md
+			changed = true
+		}
+	}
+	if !changed {
+		return msg, false
+	}
+	return &clone, true
+}
+
+// isTimeoutError 超时/网络错误不重试, 避免消息已送达但响应超时导致重复发送
+func isTimeoutError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := strings.ToLower(err.Error())
+	return strings.Contains(s, "context deadline exceeded") ||
+		strings.Contains(s, "timeout") ||
+		strings.Contains(s, "deadline exceeded") ||
+		strings.Contains(s, "超时")
 }
 
 func getC2CURLBySendType(msgType dto.SendType) uri {
