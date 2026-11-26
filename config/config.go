@@ -46,6 +46,7 @@ var restartRequiredFields = []string{
 	"IdentifyFile", "IdentifyAppids", "Crt", "Key",
 	"DeveloperLog", "LogLevel", "SaveLogs",
 	"DisableWebui", "Username", "Password",
+	"SingleProcess",
 	"Title", // 继续检查和增加
 }
 
@@ -97,6 +98,8 @@ func LoadConfig(path string, fastload bool) (*Config, error) {
 	// 第一次会让configData为空,迅速的第二次才是正常有值的configData
 	if isValidConfig(conf) {
 		instance = conf
+		// 单进程/面板模式一旦开启就保持到本次进程结束，避免热重载时误关。
+		sys.SetPanelMode(conf.Settings.SingleProcess)
 	}
 
 	return instance, nil
@@ -1402,6 +1405,16 @@ func GetUrlDotFallback() bool {
 	return instance.Settings.UrlDotFallback
 }
 
+// GetWholeBanViaMembers [实验性] 全员禁言降级为批量禁言成员; 默认关闭
+func GetWholeBanViaMembers() bool {
+	mu.RLock()
+	defer mu.RUnlock()
+	if instance == nil {
+		return false
+	}
+	return instance.Settings.WholeBanViaMembers
+}
+
 // 获取 HTTP 地址
 func GetHttpAddress() string {
 	mu.RLock()
@@ -2048,6 +2061,53 @@ func GetDisableWebui() bool {
 		return false
 	}
 	return instance.Settings.DisableWebui
+}
+
+// GetSingleProcess 返回是否启用单进程/面板模式。
+func GetSingleProcess() bool {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	if instance == nil {
+		return false
+	}
+	return instance.Settings.SingleProcess
+}
+
+// PeekSingleProcess 在正式加载配置前读取 single_process，
+// 用于在 Windows 双击检测/面板启动阶段就决定是否进入面板模式。
+func PeekSingleProcess(path string) bool {
+	configData, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var probe struct {
+		Settings struct {
+			SingleProcess bool `yaml:"single_process"`
+		} `yaml:"settings"`
+	}
+	if err := yaml.Unmarshal(configData, &probe); err == nil {
+		return probe.Settings.SingleProcess
+	}
+	// 配置里可能存在历史重复键，yaml.Unmarshal 会整体失败；
+	// 启动早期只需要一个布尔值，按行兜底读取，避免面板模式失效。
+	for _, line := range strings.Split(string(configData), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		if key, value, ok := strings.Cut(line, ":"); ok && strings.TrimSpace(key) == "single_process" {
+			value = strings.TrimSpace(value)
+			if idx := strings.Index(value, "#"); idx >= 0 {
+				value = strings.TrimSpace(value[:idx])
+			}
+			if fields := strings.Fields(value); len(fields) > 0 {
+				value = fields[0]
+			}
+			return strings.EqualFold(strings.TrimSpace(value), "true")
+		}
+	}
+	return false
 }
 
 // 获取 GetBotForumTitle

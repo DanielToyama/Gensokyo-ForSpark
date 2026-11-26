@@ -44,11 +44,12 @@ func (msg RichMediaMessage) GetSendType() SendType {
 // MessageToCreate 发送消息结构体定义
 type MessageToCreate struct {
 	Content string `json:"content,omitempty"`
-	MsgType int    `json:"msg_type,omitempty"` //消息类型: 0:文字消息, 2: md消息
+	MsgType int    `json:"msg_type,omitempty"` //消息类型: 0:文字消息, 2: md消息, 7:富媒体, 8:图文卡片
 	Embed   *Embed `json:"embed,omitempty"`
 	Ark     *Ark   `json:"ark,omitempty"`
 	Image   string `json:"image,omitempty"`
 	Media   Media  `json:"media,omitempty"`
+	Card    *Card  `json:"card,omitempty"`
 	// 要回复的消息id，为空是主动消息，公域机器人会异步审核，不为空是被动消息，公域机器人会校验语料
 	MsgID            string                    `json:"msg_id,omitempty"`
 	MessageReference *MessageReference         `json:"message_reference,omitempty"`
@@ -84,6 +85,20 @@ func (msg MessageToCreate) GetSendType() SendType {
 type MessageReference struct {
 	MessageID             string `json:"message_id"`               // 消息 id
 	IgnoreGetMessageError bool   `json:"ignore_get_message_error"` // 是否忽律获取消息失败错误
+}
+
+// Card 图文卡片消息 (msg_type=8, 2026-10-28)
+type Card struct {
+	Type    string      `json:"type"`    // 固定 tuwen
+	Content CardContent `json:"content"` // 卡片内容
+}
+
+// CardContent 图文卡片内容; url/pic_url 必须为 https
+type CardContent struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	URL         string `json:"url"`
+	PicURL      string `json:"pic_url"`
 }
 
 // GetEventID 事件ID

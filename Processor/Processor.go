@@ -53,6 +53,7 @@ type Sender struct {
 	Area     string `json:"area,omitempty"`
 	Level    string `json:"level,omitempty"`
 	Title    string `json:"title,omitempty"`
+	Avatar   string `json:"avatar,omitempty"`
 }
 
 // 频道信息事件
@@ -77,50 +78,52 @@ type OnebotChannelMessage struct {
 
 // 群信息事件
 type OnebotGroupMessage struct {
-	RawMessage      string      `json:"raw_message"`
-	MessageID       int         `json:"message_id"`
-	GroupID         int64       `json:"group_id"` // Can be either string or int depending on p.Settings.CompleteFields
-	MessageType     string      `json:"message_type"`
-	PostType        string      `json:"post_type"`
-	SelfID          int64       `json:"self_id"` // Can be either string or int
-	Sender          Sender      `json:"sender"`
-	SubType         string      `json:"sub_type"`
-	Time            int64       `json:"time"`
-	Avatar          string      `json:"avatar,omitempty"`
-	Echo            string      `json:"echo,omitempty"`
-	Message         interface{} `json:"message"` // For array format
-	MessageSeq      int         `json:"message_seq"`
-	Font            int         `json:"font"`
-	UserID          int64       `json:"user_id"`
-	RealMessageType string      `json:"real_message_type,omitempty"`  //当前信息的真实类型 group group_private guild guild_private
-	RealUserID      string      `json:"real_user_id,omitempty"`       //当前真实uid
-	RealGroupID     string      `json:"real_group_id,omitempty"`      //当前真实gid
-	IsBindedGroupId bool        `json:"is_binded_group_id,omitempty"` //当前群号是否是binded后的
-	IsBindedUserId  bool        `json:"is_binded_user_id,omitempty"`  //当前用户号号是否是binded后的
+	RawMessage       string      `json:"raw_message"`
+	MessageID        int         `json:"message_id"`
+	GroupID          int64       `json:"group_id"` // Can be either string or int depending on p.Settings.CompleteFields
+	MessageType      string      `json:"message_type"`
+	PostType         string      `json:"post_type"`
+	SelfID           int64       `json:"self_id"` // Can be either string or int
+	Sender           Sender      `json:"sender"`
+	SubType          string      `json:"sub_type"`
+	Time             int64       `json:"time"`
+	Avatar           string      `json:"avatar,omitempty"`
+	Echo             string      `json:"echo,omitempty"`
+	Message          interface{} `json:"message"` // For array format
+	MessageSeq       int         `json:"message_seq"`
+	Font             int         `json:"font"`
+	UserID           int64       `json:"user_id"`
+	RealMessageType  string      `json:"real_message_type,omitempty"`  //当前信息的真实类型 group group_private guild guild_private
+	RealUserID       string      `json:"real_user_id,omitempty"`       //当前真实uid
+	RealGroupID      string      `json:"real_group_id,omitempty"`      //当前真实gid
+	UnionGroupOpenID string      `json:"union_group_openid,omitempty"` //群统一标识
+	IsBindedGroupId  bool        `json:"is_binded_group_id,omitempty"` //当前群号是否是binded后的
+	IsBindedUserId   bool        `json:"is_binded_user_id,omitempty"`  //当前用户号号是否是binded后的
 }
 
 type OnebotGroupMessageS struct {
-	RawMessage      string      `json:"raw_message"`
-	MessageID       string      `json:"message_id"`
-	GroupID         string      `json:"group_id"` // Can be either string or int depending on p.Settings.CompleteFields
-	MessageType     string      `json:"message_type"`
-	PostType        string      `json:"post_type"`
-	SelfID          int64       `json:"self_id"` // Can be either string or int
-	Sender          Sender      `json:"sender"`
-	SubType         string      `json:"sub_type"`
-	Time            int64       `json:"time"`
-	Avatar          string      `json:"avatar,omitempty"`
-	Echo            string      `json:"echo,omitempty"`
-	Message         interface{} `json:"message"` // For array format
-	MessageSeq      int         `json:"message_seq"`
-	Font            int         `json:"font"`
-	UserID          string      `json:"user_id"`
-	RealMessageType string      `json:"real_message_type,omitempty"`  //当前信息的真实类型 group group_private guild guild_private
-	RealUserID      string      `json:"real_user_id,omitempty"`       //当前真实uid
-	RealGroupID     string      `json:"real_group_id,omitempty"`      //当前真实gid
-	IsBindedGroupId bool        `json:"is_binded_group_id,omitempty"` //当前群号是否是binded后的
-	IsBindedUserId  bool        `json:"is_binded_user_id,omitempty"`  //当前用户号号是否是binded后的
-	Platform        string      `json:"platform"`                     //平台类型
+	RawMessage       string      `json:"raw_message"`
+	MessageID        string      `json:"message_id"`
+	GroupID          string      `json:"group_id"` // Can be either string or int depending on p.Settings.CompleteFields
+	MessageType      string      `json:"message_type"`
+	PostType         string      `json:"post_type"`
+	SelfID           int64       `json:"self_id"` // Can be either string or int
+	Sender           Sender      `json:"sender"`
+	SubType          string      `json:"sub_type"`
+	Time             int64       `json:"time"`
+	Avatar           string      `json:"avatar,omitempty"`
+	Echo             string      `json:"echo,omitempty"`
+	Message          interface{} `json:"message"` // For array format
+	MessageSeq       int         `json:"message_seq"`
+	Font             int         `json:"font"`
+	UserID           string      `json:"user_id"`
+	RealMessageType  string      `json:"real_message_type,omitempty"`  //当前信息的真实类型 group group_private guild guild_private
+	RealUserID       string      `json:"real_user_id,omitempty"`       //当前真实uid
+	RealGroupID      string      `json:"real_group_id,omitempty"`      //当前真实gid
+	UnionGroupOpenID string      `json:"union_group_openid,omitempty"` //群统一标识
+	IsBindedGroupId  bool        `json:"is_binded_group_id,omitempty"` //当前群号是否是binded后的
+	IsBindedUserId   bool        `json:"is_binded_user_id,omitempty"`  //当前用户号号是否是binded后的
+	Platform         string      `json:"platform"`                     //平台类型
 }
 
 // 私聊信息事件
@@ -185,6 +188,7 @@ type OnebotGroupReceiveNotice struct {
 type PrivateSender struct {
 	Nickname string `json:"nickname"`
 	UserID   int64  `json:"user_id"` // Can be either string or int depending on logic
+	Avatar   string `json:"avatar,omitempty"`
 }
 
 // 打印结构体的函数

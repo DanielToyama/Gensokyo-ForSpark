@@ -72,14 +72,15 @@ func (p *Processors) ProcessGroupMemberAdd(data *dto.GroupMemberAddEvent) error 
 	}
 
 	Notice := GroupNoticeEvent{
-		GroupID:    GroupID64,
-		NoticeType: "group_increase",
-		OperatorID: 0, //官方事件不携带操作者
-		PostType:   "notice",
-		SelfID:     selfid64,
-		SubType:    "approve", //官方无法区分加入方式, 默认approve
-		Time:       timestampInt64,
-		UserID:     userid64,
+		GroupID:          GroupID64,
+		UnionGroupOpenID: data.UnionGroupOpenID,
+		NoticeType:       "group_increase",
+		OperatorID:       0, //官方事件不携带操作者
+		PostType:         "notice",
+		SelfID:           selfid64,
+		SubType:          "approve", //官方无法区分加入方式, 默认approve
+		Time:             timestampInt64,
+		UserID:           userid64,
 	}
 	//增强配置
 	if !config.GetNativeOb11() {

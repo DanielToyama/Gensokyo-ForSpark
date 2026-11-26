@@ -3,6 +3,7 @@ package handlers
 // Modified by DanielToyama on 2026-08-17 (Gensokyo-ForSpark fork)
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -41,20 +42,36 @@ func GetStrangerInfo(client callapi.Client, api openapi.OpenAPI, apiv2 openapi.O
 
 	userID, _ := strconv.ParseInt(userIDStr, 10, 64)
 
-	// 反查官方 openid -> 用户缓存昵称
-	nickname := ""
+	// 反查官方 openid; 优先走 2026-11-16 新增的获取用户基本信息接口
+	nickname, avatar, unionOpenID := "", "", ""
+	allowProactiveMsg := false
 	if userIDStr != "" {
-		if openid, err := idmap.RetrieveRowByIDv2(userIDStr); err == nil && openid != "" {
+		if openid, err := resolveUserOpenID(userIDStr); err == nil && openid != "" {
 			nickname = idmap.RetrieveUsernameByOpenID(openid)
+			if apiv2 != nil {
+				if info, err := apiv2.GetUserInfo(context.TODO(), openid); err == nil && info != nil {
+					if info.Username != "" {
+						nickname = info.Username
+					}
+					avatar = info.Avatar
+					unionOpenID = info.UnionOpenID
+					allowProactiveMsg = info.AllowProactiveMsg
+				} else if err != nil {
+					mylog.Printf("get_stranger_info: 官方用户信息接口不可用(%v), 使用缓存昵称", err)
+				}
+			}
 		}
 	}
 
 	data := map[string]interface{}{
-		"user_id":  userID,
-		"nickname": nickname,
-		"sex":      "",
-		"age":      0,
-		"qqLevel":  9999, // 官方API无QQ等级数据, 固定放行等级门槛(见函数头注释)
+		"user_id":             userID,
+		"nickname":            nickname,
+		"avatar":              avatar,
+		"union_openid":        unionOpenID,
+		"allow_proactive_msg": allowProactiveMsg,
+		"sex":                 "",
+		"age":                 0,
+		"qqLevel":             9999, // 官方API无QQ等级数据, 固定放行等级门槛(见函数头注释)
 	}
 	resp := groupResponse(data, message)
 	if err := client.SendMessage(resp); err != nil {

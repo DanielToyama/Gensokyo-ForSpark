@@ -14,8 +14,8 @@ import (
 	"github.com/hoshinonyaruko/gensokyo/echo"
 	"github.com/hoshinonyaruko/gensokyo/handlers"
 	"github.com/hoshinonyaruko/gensokyo/idmap"
-	"github.com/hoshinonyaruko/gensokyo/mylog"
 	"github.com/hoshinonyaruko/gensokyo/msgmap"
+	"github.com/hoshinonyaruko/gensokyo/mylog"
 	"github.com/hoshinonyaruko/gensokyo/unioncache"
 
 	"github.com/tencent-connect/botgo/dto"
@@ -257,6 +257,7 @@ func (p *Processors) ProcessGroupMessage(data *dto.Message, isAtEvent ...bool) e
 			SubType: "normal",
 			Time:    time.Now().Unix(),
 		}
+		groupMsg.UnionGroupOpenID = data.UnionGroupOpenID
 		//增强配置
 		if !config.GetNativeOb11() {
 			groupMsg.RealMessageType = "group"
@@ -264,18 +265,24 @@ func (p *Processors) ProcessGroupMessage(data *dto.Message, isAtEvent ...bool) e
 			groupMsg.IsBindedGroupId = IsBindedGroupId
 			groupMsg.RealGroupID = data.GroupID
 			groupMsg.RealUserID = data.Author.ID
-			groupMsg.Avatar, _ = GenerateAvatarURLV2(data.Author.ID)
+			groupMsg.Avatar = memberAvatar(data.Author)
 		}
 		//根据条件判断是否增加nick和card
 		var CaN = config.GetCardAndNick()
 		if CaN != "" {
 			groupMsg.Sender.Nickname = CaN
 			groupMsg.Sender.Card = CaN
-		} else if data.Author.Username != "" {
-			// [修复] 官方 username 作为默认昵称（官方事件已返回真实昵称，如 "Daniel_户山兔兔"）
-			groupMsg.Sender.Nickname = data.Author.Username
-			groupMsg.Sender.Card = data.Author.Username
+		} else {
+			// 2026-11-16: 官方事件新增 member_nickname(群内昵称), card 优先用它
+			if data.Author.Username != "" {
+				groupMsg.Sender.Nickname = data.Author.Username
+			}
+			groupMsg.Sender.Card = data.MemberNickname
+			if groupMsg.Sender.Card == "" {
+				groupMsg.Sender.Card = data.Author.Username
+			}
 		}
+		groupMsg.Sender.Avatar = groupMsg.Avatar
 		// 根据条件判断是否添加Echo字段
 		if config.GetTwoWayEcho() {
 			groupMsg.Echo = echostr
@@ -353,23 +360,29 @@ func (p *Processors) ProcessGroupMessage(data *dto.Message, isAtEvent ...bool) e
 			Time:     time.Now().Unix(),
 			Platform: platform,
 		}
+		groupMsgS.UnionGroupOpenID = data.UnionGroupOpenID
 		// 增强配置
 		if !config.GetNativeOb11() {
 			groupMsgS.RealMessageType = "group"
 			groupMsgS.RealGroupID = data.GroupID
 			groupMsgS.RealUserID = data.Author.ID
-			groupMsgS.Avatar, _ = GenerateAvatarURLV2(data.Author.ID)
+			groupMsgS.Avatar = memberAvatar(data.Author)
 		}
 		//根据条件判断是否增加nick和card
 		var CaN = config.GetCardAndNick()
 		if CaN != "" {
 			groupMsgS.Sender.Nickname = CaN
 			groupMsgS.Sender.Card = CaN
-		} else if data.Author.Username != "" {
-			// [修复] 官方 username 作为默认昵称
-			groupMsgS.Sender.Nickname = data.Author.Username
-			groupMsgS.Sender.Card = data.Author.Username
+		} else {
+			if data.Author.Username != "" {
+				groupMsgS.Sender.Nickname = data.Author.Username
+			}
+			groupMsgS.Sender.Card = data.MemberNickname
+			if groupMsgS.Sender.Card == "" {
+				groupMsgS.Sender.Card = data.Author.Username
+			}
 		}
+		groupMsgS.Sender.Avatar = groupMsgS.Avatar
 		// 根据条件判断是否添加Echo字段
 		if config.GetTwoWayEcho() {
 			groupMsgS.Echo = echostr
@@ -418,9 +431,21 @@ func (p *Processors) ProcessGroupMessage(data *dto.Message, isAtEvent ...bool) e
 		//上报信息到onebotv11应用端(正反ws) 并等待返回
 		go p.BroadcastMessageToAll(groupMsgMap, p.Apiv2, atData, skipDowntime)
 	} else {
-		// FAF式
+		// FAF模式
 		go p.BroadcastMessageToAllFAF(groupMsgMap, p.Apiv2, atData)
 	}
 
 	return nil
+}
+
+// memberAvatar 优先使用官方事件下发的头像, 缺失时按 openid 生成
+func memberAvatar(user *dto.User) string {
+	if user == nil {
+		return ""
+	}
+	if user.Avatar != "" {
+		return user.Avatar
+	}
+	avatar, _ := GenerateAvatarURLV2(user.ID)
+	return avatar
 }

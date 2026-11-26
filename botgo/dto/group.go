@@ -14,12 +14,13 @@ package dto
 
 // GroupInfo 群基本信息
 type GroupInfo struct {
-	GroupOpenID     string   `json:"group_openid"`
-	GroupName       string   `json:"group_name"`
-	GroupFingerMemo string   `json:"group_finger_memo"` // 群简介
-	GroupClassText  string   `json:"group_class_text"`  // 群分类
-	GroupTags       []string `json:"group_tags"`        // 群标签列表
-	GroupMemberNum  int      `json:"group_member_num"`  // 群成员人数
+	GroupOpenID      string   `json:"group_openid"`
+	UnionGroupOpenID string   `json:"union_group_openid,omitempty"` // 群统一标识 (绑定3方应用时有效)
+	GroupName        string   `json:"group_name"`
+	GroupFingerMemo  string   `json:"group_finger_memo"` // 群简介
+	GroupClassText   string   `json:"group_class_text"`  // 群分类
+	GroupTags        []string `json:"group_tags"`        // 群标签列表
+	GroupMemberNum   int      `json:"group_member_num"`  // 群成员人数
 }
 
 // GroupBotState 机器人群内状态
@@ -248,35 +249,38 @@ type WhitelistUpdateResult struct {
 
 // GroupMemberAddEvent 群成员加入事件 (GROUP_MEMBER_ADD)
 type GroupMemberAddEvent struct {
-	Timestamp    interface{} `json:"timestamp"` // Unix 秒
-	GroupOpenID  string      `json:"group_openid"`
-	MemberOpenID string      `json:"member_openid"`
-	UserOpenID   string      `json:"user_openid"` // 跨应用统一标识, 可能为空
+	Timestamp        interface{} `json:"timestamp"` // Unix 秒
+	GroupOpenID      string      `json:"group_openid"`
+	UnionGroupOpenID string      `json:"union_group_openid,omitempty"`
+	MemberOpenID     string      `json:"member_openid"`
+	UserOpenID       string      `json:"user_openid"` // 跨应用统一标识, 可能为空
 }
 
 // GroupMemberRemoveEvent 群成员退出事件 (GROUP_MEMBER_REMOVE)
 type GroupMemberRemoveEvent struct {
-	Timestamp    interface{} `json:"timestamp"` // Unix 秒
-	GroupOpenID  string      `json:"group_openid"`
-	MemberOpenID string      `json:"member_openid"`
-	UserOpenID   string      `json:"user_openid"` // 可能为空
+	Timestamp        interface{} `json:"timestamp"` // Unix 秒
+	GroupOpenID      string      `json:"group_openid"`
+	UnionGroupOpenID string      `json:"union_group_openid,omitempty"`
+	MemberOpenID     string      `json:"member_openid"`
+	UserOpenID       string      `json:"user_openid"` // 可能为空
 }
 
 // GroupJoinRequestEvent 用户申请加群事件 (GROUP_JOIN_REQUEST)
 // 注意: 只有当机器人是群管理员时才可以收到此事件。
 type GroupJoinRequestEvent struct {
-	GroupOpenID   string        `json:"group_openid"`
-	JoinRequestID string        `json:"join_request_id"`
-	RiskTips      string        `json:"risk_tips"`
-	UnionOpenID   string        `json:"union_openid"`
-	MemberOpenID  string        `json:"member_openid"`
-	Username      string        `json:"username"`
-	ApplyAt       string        `json:"apply_at"`     // RFC3339
-	ApplySource   string        `json:"apply_source"` // self_apply 主动申请, invited 被邀请
-	InvitedBy     string        `json:"invited_by"`
-	Bot           bool          `json:"bot"`
-	VerifyInfo    *VerifyInfo   `json:"verify_info"`
-	AutoApproved  *AutoApproved `json:"auto_approved,omitempty"` // 只在事件中携带
+	GroupOpenID      string        `json:"group_openid"`
+	UnionGroupOpenID string        `json:"union_group_openid,omitempty"`
+	JoinRequestID    string        `json:"join_request_id"`
+	RiskTips         string        `json:"risk_tips"`
+	UnionOpenID      string        `json:"union_openid"`
+	MemberOpenID     string        `json:"member_openid"`
+	Username         string        `json:"username"`
+	ApplyAt          string        `json:"apply_at"`     // RFC3339
+	ApplySource      string        `json:"apply_source"` // self_apply 主动申请, invited 被邀请
+	InvitedBy        string        `json:"invited_by"`
+	Bot              bool          `json:"bot"`
+	VerifyInfo       *VerifyInfo   `json:"verify_info"`
+	AutoApproved     *AutoApproved `json:"auto_approved,omitempty"` // 只在事件中携带
 }
 
 // AutoApproved 自动审批通过的扩展信息
@@ -296,7 +300,8 @@ type SubscribeMsgTemplateResult struct {
 
 // SubscribeMessageStatusEvent 订阅消息授权状态变更事件 (SUBSCRIBE_MESSAGE_STATUS)
 type SubscribeMessageStatusEvent struct {
-	GroupOpenID string                       `json:"group_openid"`
-	OpenID      string                       `json:"openid"`
-	Result      []SubscribeMsgTemplateResult `json:"result"`
+	GroupOpenID      string                       `json:"group_openid"`
+	UnionGroupOpenID string                       `json:"union_group_openid,omitempty"`
+	OpenID           string                       `json:"openid"`
+	Result           []SubscribeMsgTemplateResult `json:"result"`
 }

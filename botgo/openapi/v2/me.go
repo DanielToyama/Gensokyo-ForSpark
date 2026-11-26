@@ -20,6 +20,18 @@ func (o *openAPIv2) Me(ctx context.Context) (*dto.User, error) {
 	return resp.Result().(*dto.User), nil
 }
 
+// GetUserInfo 获取用户基本信息 (2026-11-16)
+func (o *openAPIv2) GetUserInfo(ctx context.Context, userOpenID string) (*dto.UserInfo, error) {
+	resp, err := o.request(ctx).
+		SetResult(dto.UserInfo{}).
+		SetPathParam("user_id", userOpenID).
+		Get(o.getURL(userInfoURI))
+	if err != nil {
+		return nil, err
+	}
+	return resp.Result().(*dto.UserInfo), nil
+}
+
 // MeGuilds 拉取当前用户加入的频道列表
 func (o *openAPIv2) MeGuilds(ctx context.Context, pager *dto.GuildPager) ([]*dto.Guild, error) {
 	if pager == nil {

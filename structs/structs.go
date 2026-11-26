@@ -87,6 +87,8 @@ type Settings struct {
 	DisableWebui bool   `yaml:"disable_webui"`
 	Username     string `yaml:"server_user_name"`
 	Password     string `yaml:"server_user_password"`
+	//单进程/面板模式: 跳过Windows双击检测, 限制同一exe只运行一个实例, 重启时不新开控制台窗口
+	SingleProcess bool `yaml:"single_process"`
 	//指令魔法类
 	RemovePrefix        bool                 `yaml:"remove_prefix"`
 	RemoveAt            bool                 `yaml:"remove_at"`
@@ -150,6 +152,8 @@ type Settings struct {
 	QrSize         int  `yaml:"qr_size"`
 	TransferUrl    bool `yaml:"transfer_url"`
 	UrlDotFallback bool `yaml:"url_dot_fallback"`
+	//实验性功能
+	WholeBanViaMembers bool `yaml:"whole_ban_via_members"` // [实验性,默认关闭] 官方未开放全员禁言写接口时, 降级为批量禁言/解禁成员
 	//框架修改
 	Title        string `yaml:"title"`
 	FrpPort      string `yaml:"frp_port"`

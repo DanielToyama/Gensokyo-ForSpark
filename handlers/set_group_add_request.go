@@ -69,8 +69,16 @@ func HandleSetGroupAddRequest(client callapi.Client, api openapi.OpenAPI, apiv2 
 		RejectReason:  message.Params.Reason,
 	}
 	// onebot v11 语义: approve=true 通过; approve=false 拒绝(拒绝理由走 reason)
+	// 未显式传 approve 时默认 true; refuse=true 仍按拒绝处理(兼容旧实现)
 	// 兼容只传 approve 的实现(如 SparkBridge groupRequest 插件), 不再要求 refuse 字段
-	if message.Params.Approve {
+	approve := true
+	if message.Params.ApproveSet {
+		approve = message.Params.Approve
+	}
+	if message.Params.Refuse {
+		approve = false
+	}
+	if approve {
 		req.Op = "approve"
 	} else {
 		req.Op = "decline"

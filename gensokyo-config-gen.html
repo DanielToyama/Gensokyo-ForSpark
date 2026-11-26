@@ -138,6 +138,14 @@ h1 { font-size: 20px; font-weight: 600; color: #1e293b; margin-bottom: 6px; }
       <label class="radio-item"><input type="radio" name="log_level" value="3"> error（只报错）</label>
     </div>
   </div>
+  <div class="field">
+    <label>单进程 / 面板模式 (single_process) <span class="hint">第三方面板启动 exe 时建议开启</span></label>
+    <div class="radio-group">
+      <label class="radio-item"><input type="radio" name="single_process" value="false" checked> 关闭</label>
+      <label class="radio-item"><input type="radio" name="single_process" value="true"> 开启</label>
+    </div>
+    <div style="font-size:12px;color:#64748b;display:block;margin-top:8px;line-height:1.5">开启后跳过 Windows 双击检测，避免面板没有控制台时误弹“请勿双击”导致控制台空白；同一 exe 只允许一个实例；重启时在当前控制台启动，不再新开窗口。</div>
+  </div>
 </div>
 
 <div class="card">
@@ -320,6 +328,7 @@ function generate() {
   const at_markdown = document.querySelector('input[name="at_markdown"]:checked').value;
   const allow_proactive_msg = document.querySelector('input[name="allow_proactive_msg"]:checked').value;
   const log_level = document.querySelector('input[name="log_level"]:checked').value;
+  const single_process = document.querySelector('input[name="single_process"]:checked').value;
   const at_add_group = document.querySelector('input[name="at_add_group"]:checked').value;
   const at_remove = document.querySelector('input[name="at_remove"]:checked').value;
   const at_remove_bot = document.querySelector('input[name="at_remove_bot"]:checked').value;
@@ -348,6 +357,7 @@ settings:
   shard_count: 1
   shard_id: 0
   shard_num: 1
+  single_process: ${single_process}
 
   #事件订阅 (群聊管理事件可全部开启; 前提: 群主在手机QQ客户端的群设置里给机器人配置相应权限)
   text_intent:

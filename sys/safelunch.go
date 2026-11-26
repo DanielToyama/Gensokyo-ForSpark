@@ -13,19 +13,49 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// RunningByDoubleClick 检查是否通过双击直接运行
+// RunningByDoubleClick 检查是否通过双击直接运行。
+// 注意：第三方面板/管道启动时 GetConsoleProcessList 可能返回 0（没有控制台），
+// 这并不等于双击，不能触发“请勿双击”弹窗，否则面板控制台会完全空白。
 func RunningByDoubleClick() bool {
 	kernel32 := windows.NewLazySystemDLL("kernel32.dll")
-	lp := kernel32.NewProc("GetConsoleProcessList")
-	if lp != nil {
-		var ids [2]uint32
-		var maxCount uint32 = 2
-		ret, _, _ := lp.Call(uintptr(unsafe.Pointer(&ids)), uintptr(maxCount))
-		if ret > 1 {
+
+	// 面板通常把 stdout 重定向到管道/文件；这种启动方式不可能是双击。
+	// FILE_TYPE_CHAR=2（真实控制台），PIPE=3、DISK=1 均按非双击处理。
+	stdOutputHandle := ^uintptr(10) // STD_OUTPUT_HANDLE = -11
+	stdHandle, _, _ := kernel32.NewProc("GetStdHandle").Call(stdOutputHandle)
+	if stdHandle != 0 && stdHandle != ^uintptr(0) {
+		fileType, _, _ := kernel32.NewProc("GetFileType").Call(stdHandle)
+		if fileType != 0 && fileType != 2 {
 			return false
 		}
 	}
-	return true
+
+	// 第三方面板有时会创建隐藏控制台；双击启动的控制台窗口是可见的。
+	// 隐藏控制台同样不应弹“请勿双击”对话框。
+	hwnd, _, _ := kernel32.NewProc("GetConsoleWindow").Call()
+	if hwnd != 0 {
+		visible, _, _ := windows.NewLazySystemDLL("user32.dll").NewProc("IsWindowVisible").Call(hwnd)
+		if visible == 0 {
+			return false
+		}
+	}
+
+	lp := kernel32.NewProc("GetConsoleProcessList")
+	if lp == nil {
+		return false
+	}
+	var ids [2]uint32
+	var maxCount uint32 = 2
+	ret, _, _ := lp.Call(uintptr(unsafe.Pointer(&ids)), uintptr(maxCount))
+	switch ret {
+	case 0:
+		// 没有控制台（面板捕获 stdio / CREATE_NO_WINDOW），按非双击处理。
+		return false
+	case 1:
+		return true
+	default:
+		return false
+	}
 }
 
 // windows

@@ -102,6 +102,8 @@ type WebsocketAPI interface {
 type UserAPI interface {
 	Me(ctx context.Context) (*dto.User, error)
 	MeGuilds(ctx context.Context, pager *dto.GuildPager) ([]*dto.Guild, error)
+	// GetUserInfo 获取用户基本信息 (GET /v2/users/{user_openid}/info, 2026-11-16)
+	GetUserInfo(ctx context.Context, userOpenID string) (*dto.UserInfo, error)
 }
 
 // MessageAPI 消息相关接口

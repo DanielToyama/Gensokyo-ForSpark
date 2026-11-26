@@ -12,6 +12,31 @@
 
 ---
 
+## 2026-11-22 单进程 / 面板模式（single_process）
+
+**背景**：第三方面板（宝塔、MCSManager、自建 Web 控制台等）启动 `gensokyo.exe` 并捕获 stdout 时，控制台偶尔完全空白。两个根因：
+
+1. `sys.InitBase()` 的双击检测依赖 `GetConsoleProcessList`。面板通过管道/无控制台方式启动时返回 0，旧代码会误判为双击并弹“请勿双击”MessageBox，面板看不到弹窗，进程随即退出。
+2. 旧 Windows 重启逻辑写 `restart.bat` 并执行 `start "" gensokyo.exe -faststart`，会新开一个控制台窗口；面板只绑定旧进程的 stdout，所以重启后日志“消失”，同时容易留下多个 Gensokyo 窗口。
+
+**新增配置**：
+
+```yaml
+settings:
+  single_process: true
+```
+
+开启后：
+
+- 跳过 Windows 双击检测，面板无控制台也能正常启动并输出日志；
+- 同一 exe 使用锁文件 + PID 存活检测限制单实例，重复启动会明确提示并退出；崩溃残留的死 PID 会自动清理；
+- 重启时在当前控制台/管道内启动子进程，不再 `start` 新窗口；
+- 也可以用启动参数 `-panel` 或环境变量 `GENSOKYO_PANEL=1` 临时开启。
+
+**涉及文件**：`structs/structs.go`、`config/config.go`、`main.go`、`sys/panelmode.go`、`sys/singleprocess.go`、`sys/restart_windows.go`、`sys/restart_unix.go`、`sys/safelunch.go`、`template/config_template.go`、`gensokyo-config-gen.html`、`readme.md`。
+
+---
+
 ## 一、总览
 
 本 fork 面向 **SparkBridge 群服互通** 场景，核心目标是让 QQ 官方机器人在 OneBot v11 生态（尤其 SparkBridge）中「像普通 QQ 号一样可用」。全部改动可归为 9 个能力域：
@@ -196,6 +221,21 @@ WS 全部掉线时的兜底回复，改动见 `Processor/Processor.go` 的 `Broa
 >   - 扩展 API：`get_group_member_blacklist`、`add_group_member_blacklist`、`remove_group_member_blacklist`
 >   - 新增 `GroupAPI` 方法（v1/v2 双实现）、DTO、URI、callapi 参数与文档
 
+> **2026-11-21 工作区变更（待提交）**
+>
+> - **适配官方 2026-11-17 更新**：`send_private_msg` 支持用群消息 `message_id` 私聊回复发送者；被动回复 50 次/60 分钟规则由官方服务端控制，文档已注明
+> - **适配官方 2026-11-16 更新**：新增 `get_user_info`（`GET /v2/users/{openid}/info`）；`get_stranger_info` 优先调用官方接口；群/单聊事件补充 `member_nickname`、`avatar`、`union_group_openid` 字段
+> - **适配官方 2026-10-28 更新**：新增 `send_group_card_msg` / `send_private_card_msg`（图文卡片 `msg_type=8`）
+> - 文档：新增 [官方更新兼容-202611.md](./官方更新兼容-202611.md)
+
+> **2026-11-27 工作区变更（待提交）**
+>
+> - **OneBot 默认值兼容**：`set_group_ban` 缺省 `duration` 按 1800 秒；`set_group_whole_ban` 缺省 `enable` 按 true；`set_group_add_request` 缺省 `approve` 按 true（用 `ParamsContent` 的 `*Set` 标记区分「未传」与「显式 false」）
+> - **`send_msg` 支持显式 `message_type`**：group/private/guild 直接路由，并对空 `group_id`/`user_id` 做保护
+> - **`get_group_info` 失败不再伪造「测试群」**，改为标准失败响应；`set_group_kick` 成功返回标准 `data: null`
+> - **全员禁言澄清**：官方 `restrict_chat_setting` 仅支持 `members`，`global_rule` 只读，**官方无全员禁言写接口**。`set_group_whole_ban` 默认返回失败；新增实验性开关 `whole_ban_via_members`（默认 false），开启后才降级为批量禁言/解禁群成员（每批 20，跳过群主/管理员/机器人，依赖群成员列表内邀权限，新入群成员不受影响）
+> - 文档：新增 [扩展API测试表.md](./扩展API测试表.md)，并随仓库提供 `tools/onclient`（Go 版极简 OneBot v11 WS 测试客户端，`-script` 跑测试套件、`-allow-danger` 控制写操作）
+
 ---
 
 ## 四、完整提交记录（倒序）
@@ -281,7 +321,7 @@ WS 全部掉线时的兜底回复，改动见 `Processor/Processor.go` 的 `Broa
 | `handlers/message_parser.go` | 出站 @ 转文本/真 at、FakeReply 前缀、face 段处理、入站 @/表情转换、5 个发送回执埋点 |
 | `handlers/send_group_msg.go` | `maybeUpgradeToMarkdownAt`、`sendGroupMsgUpgraded`、富媒体 at 还原、主动消息 |
 | `handlers/delete_msg.go` | 标准响应、msgmap 反查（群/私聊/频道/频道私信）、健壮性 |
-| `handlers/get_group_info.go` | 群类型返回官方真实群信息（失败回退模拟数据） |
+| `handlers/get_group_info.go` | 群类型返回官方真实群信息，失败返回标准错误 |
 | `handlers/set_group_ban.go` / `set_group_whole_ban.go` | 群聊禁言/全员禁言接入官方 v2 接口；补注册标准动作名 |
 | `handlers/get_status.go` | 重写为 LLOneBot 结构 |
 | `handlers/get_group_member_info.go` 等 | 昵称/字段对齐（随主链路） |

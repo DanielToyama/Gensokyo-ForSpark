@@ -70,16 +70,20 @@ func (a *ActionMessage) UnmarshalJSON(data []byte) error {
 
 // params类型
 type ParamsContent struct {
-	BotQQ     string      `json:"botqq,omitempty"`
-	ChannelID interface{} `json:"channel_id,omitempty"`
-	GuildID   interface{} `json:"guild_id,omitempty"`
-	GroupID   interface{} `json:"group_id,omitempty"`   // 每一种onebotv11实现的字段类型都可能不同
-	MessageID interface{} `json:"message_id,omitempty"` // 用于撤回信息
-	Message   interface{} `json:"message,omitempty"`    // 这里使用interface{}因为它可能是多种类型
-	Messages  interface{} `json:"messages,omitempty"`   // 坑爹转发信息
-	UserID    interface{} `json:"user_id,omitempty"`    // 这里使用interface{}因为它可能是多种类型
-	Duration  int         `json:"duration,omitempty"`   // 可选的整数
-	Enable    bool        `json:"enable,omitempty"`     // 可选的布尔值
+	BotQQ       string      `json:"botqq,omitempty"`
+	ChannelID   interface{} `json:"channel_id,omitempty"`
+	GuildID     interface{} `json:"guild_id,omitempty"`
+	GroupID     interface{} `json:"group_id,omitempty"`     // 每一种onebotv11实现的字段类型都可能不同
+	MessageID   interface{} `json:"message_id,omitempty"`   // 用于撤回信息
+	Message     interface{} `json:"message,omitempty"`      // 这里使用interface{}因为它可能是多种类型
+	Messages    interface{} `json:"messages,omitempty"`     // 坑爹转发信息
+	UserID      interface{} `json:"user_id,omitempty"`      // 这里使用interface{}因为它可能是多种类型
+	MessageType string      `json:"message_type,omitempty"` // send_msg 显式会话类型: group/private
+	Duration    int         `json:"duration,omitempty"`     // 可选的整数
+	Enable      bool        `json:"enable,omitempty"`       // 可选的布尔值
+	// 记录字段是否显式出现, 用于 OneBot 默认值兼容 (duration 默认1800, enable 默认true)
+	DurationSet bool `json:"-"`
+	EnableSet   bool `json:"-"`
 	// handle quick operation
 	Context      Context   `json:"context,omitempty"`       // context 字段
 	Operation    Operation `json:"operation,omitempty"`     // operation 字段
@@ -88,6 +92,7 @@ type ParamsContent struct {
 	// [新增] 群聊管理相关参数 (set_group_add_request / join_request_list / strategy 等)
 	Approve                 bool                   `json:"approve,omitempty"`                    // 入群审批: 是否通过
 	Refuse                  bool                   `json:"refuse,omitempty"`                     // 入群审批: 是否拒绝
+	ApproveSet              bool                   `json:"-"`                                    // approve 是否显式出现 (OneBot 默认 true)
 	Reason                  string                 `json:"reason,omitempty"`                     // 入群审批: 拒绝理由
 	Flag                    string                 `json:"flag,omitempty"`                       // 入群审批: 申请ID(join_request_id)
 	Cursor                  string                 `json:"cursor,omitempty"`                     // 分页游标
@@ -106,11 +111,17 @@ type ParamsContent struct {
 	Members                 []MemberMuteStateParam `json:"members,omitempty"`                    // 群禁言成员列表(原始扩展API用)
 
 	// [新增] 群成员管理 (2026-09-03)
-	UserIDs              []string `json:"user_ids,omitempty"`                // 批量移除成员: 应用端用户ID列表
-	MemberOpenIDs        []string `json:"member_openids,omitempty"`          // 官方 openid 列表(直接透传)
-	AddToMemberBlacklist bool     `json:"add_to_member_blacklist,omitempty"` // 移除成员时同步加入群黑名单
-	RejectAddRequest     bool     `json:"reject_add_request,omitempty"`      // OneBot set_group_kick 兼容字段
-	Op                   string   `json:"op,omitempty"`                      // 群黑名单操作: add/del
+	UserIDs              []interface{} `json:"user_ids,omitempty"`                // 批量移除成员: 应用端用户ID列表(兼容数字/字符串)
+	MemberOpenIDs        []string      `json:"member_openids,omitempty"`          // 官方 openid 列表(直接透传)
+	AddToMemberBlacklist bool          `json:"add_to_member_blacklist,omitempty"` // 移除成员时同步加入群黑名单
+	RejectAddRequest     bool          `json:"reject_add_request,omitempty"`      // OneBot set_group_kick 兼容字段
+	Op                   string        `json:"op,omitempty"`                      // 群黑名单操作: add/del
+
+	// [新增] 图文卡片消息 (msg_type=8, 2026-10-28)
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+	URL         string `json:"url,omitempty"`
+	PicURL      string `json:"pic_url,omitempty"`
 }
 
 // MemberMuteStateParam 设置群成员禁言的单项参数
@@ -149,12 +160,27 @@ func (p *ParamsContent) UnmarshalJSON(data []byte) error {
 		MessageID interface{} `json:"message_id"`
 		ChannelID interface{} `json:"channel_id"`
 		GuildID   interface{} `json:"guild_id"`
+		Duration  *int        `json:"duration"`
+		Enable    *bool       `json:"enable"`
+		Approve   *bool       `json:"approve"`
 		*Alias
 	}{
 		Alias: (*Alias)(p),
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
+	}
+	if aux.Duration != nil {
+		p.Duration = *aux.Duration
+		p.DurationSet = true
+	}
+	if aux.Enable != nil {
+		p.Enable = *aux.Enable
+		p.EnableSet = true
+	}
+	if aux.Approve != nil {
+		p.Approve = *aux.Approve
+		p.ApproveSet = true
 	}
 
 	switch v := aux.GroupID.(type) {

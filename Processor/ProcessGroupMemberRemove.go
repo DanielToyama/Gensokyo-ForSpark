@@ -51,14 +51,15 @@ func (p *Processors) ProcessGroupMemberRemove(data *dto.GroupMemberRemoveEvent) 
 	}
 
 	Notice := GroupNoticeEvent{
-		GroupID:    GroupID64,
-		NoticeType: "group_decrease",
-		OperatorID: 0, //官方事件不携带操作者
-		PostType:   "notice",
-		SelfID:     selfid64,
-		SubType:    "leave", //官方无法区分退出方式, 默认leave
-		Time:       timestampInt64,
-		UserID:     userid64,
+		GroupID:          GroupID64,
+		UnionGroupOpenID: data.UnionGroupOpenID,
+		NoticeType:       "group_decrease",
+		OperatorID:       0, //官方事件不携带操作者
+		PostType:         "notice",
+		SelfID:           selfid64,
+		SubType:          "leave", //官方无法区分退出方式, 默认leave
+		Time:             timestampInt64,
+		UserID:           userid64,
 	}
 	//增强配置
 	if !config.GetNativeOb11() {

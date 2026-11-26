@@ -145,7 +145,18 @@ func HandleSendPrivateMsg(client callapi.Client, api openapi.OpenAPI, apiv2 open
 		var messageID string
 		// EventID
 		var eventID string
-		if config.GetLazyMessageId() {
+		// [2026-11-17] 群消息私聊回复: 应用端可直接传群消息事件的 message_id,
+		// 官方允许用群消息 msg_id 调单聊接口回复该消息的发送者(需好友关系, 按群消息规则计时计次)
+		if mid := paramStr(message.Params.MessageID); mid != "" {
+			messageID = mid
+			if !config.GetStringOb11() {
+				if realMsgID, err := idmap.RetrieveRowByCachev2(mid); err == nil && realMsgID != "" {
+					messageID = realMsgID
+				}
+			}
+			mylog.Printf("send_private_msg: 使用显式 message_id 作为被动回复ID: %v", messageID)
+		}
+		if config.GetLazyMessageId() && messageID == "" {
 			//由于实现了Params的自定义unmarshell 所以可以类型安全的断言为string
 			messageID = echo.GetLazyMessagesId(UserID)
 			mylog.Printf("GetLazyMessagesId: %v", messageID)

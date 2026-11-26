@@ -61,14 +61,15 @@ func (p *Processors) ProcessGroupDelBot(data *dto.GroupAddBotEvent) error {
 		selfid64 = int64(p.Settings.AppID)
 	}
 	Notice = GroupNoticeEvent{
-		GroupID:    GroupID64,
-		NoticeType: "group_decrease",
-		OperatorID: 0,
-		PostType:   "notice",
-		SelfID:     selfid64,
-		SubType:    "kick_me",
-		Time:       timestampInt64,
-		UserID:     userid64,
+		GroupID:          GroupID64,
+		UnionGroupOpenID: data.UnionGroupOpenID,
+		NoticeType:       "group_decrease",
+		OperatorID:       0,
+		PostType:         "notice",
+		SelfID:           selfid64,
+		SubType:          "kick_me",
+		Time:             timestampInt64,
+		UserID:           userid64,
 	}
 	//增强配置
 	if !config.GetNativeOb11() {

@@ -24,10 +24,17 @@ import (
 	"github.com/hoshinonyaruko/gensokyo/msgmap"
 )
 
-// paramStr 取出 ParamsContent 里的字符串参数(反序列化时已统一转成 string, 这里再兜一层 nil)
+// paramStr 取出 ParamsContent 里的字符串参数(反序列化时已统一转成 string, 这里再兜一层 nil/数字)
 func paramStr(v interface{}) string {
-	if s, ok := v.(string); ok {
-		return s
+	switch x := v.(type) {
+	case string:
+		return x
+	case float64:
+		return strconv.FormatInt(int64(x), 10)
+	case int:
+		return strconv.Itoa(x)
+	case int64:
+		return strconv.FormatInt(x, 10)
 	}
 	return ""
 }

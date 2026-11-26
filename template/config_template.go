@@ -20,6 +20,7 @@ settings:
   shard_count: 1                    #分片数量 默认1
   shard_id: 0                       #当前分片id 默认从0开始,详细请看 https://bot.q.qq.com/wiki/develop/api/gateway/reference.html
   shard_num: 1                      #接口调用超过频率限制时,如果不想要多开gsk,尝试调大.gsk会尝试连接到n个分片处理信息. n为你所配置的值.与 shard_count和shard_id互不相干.
+  single_process: false             #单进程/面板模式: 跳过Windows双击检测(第三方面板捕获控制台必需), 同一exe只允许一个实例, 重启时不新开控制台窗口; 修改后需重启
 
   #事件订阅
   text_intent:                                       # 请根据公域 私域来选择intent,错误的intent将连接失败
@@ -192,6 +193,9 @@ settings:
   qr_size : 200                     #二维码尺寸,单位像素
   transfer_url : true                #默认开启,关闭后自理url发送,配置server_dir为你的域名,配置crt和key后,将域名/url和/image在q.qq.com后台通过校验,自动使用302跳转处理机器人发出的所有域名.
   url_dot_fallback : false           #网址回退方案: 将消息中所有URL的"."替换为"·", 避免QQ域名校验/拦截; 开启后优先于二维码/短链模式(链接会变成不可点击的文本)
+
+  #实验性功能 (默认全部关闭, 开启前请理解风险)
+  whole_ban_via_members : false      #实验性: 官方未开放全员禁言写接口(仅支持成员级禁言); 开启后 set_group_whole_ban 降级为批量禁言/解禁群成员(每批20, 跳过群主/管理员/机器人), 需群成员列表内邀权限, 新入群成员不受影响, 可能部分失败
 
   #框架修改
   title : "Gensokyo © 2023 - Hoshinonyaruko"              #程序的标题 如果多个机器人 可根据标题区分

@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"strconv"
-	"time"
 
 	"github.com/hoshinonyaruko/gensokyo/callapi"
 	"github.com/hoshinonyaruko/gensokyo/config"
@@ -31,13 +30,14 @@ type OnebotGroupInfo struct {
 }
 
 type GroupInfo struct {
-	GroupID         int64  `json:"group_id"`
-	GroupName       string `json:"group_name"`
-	GroupMemo       string `json:"group_memo"`
-	GroupCreateTime int32  `json:"group_create_time"`
-	GroupLevel      int32  `json:"group_level"`
-	MemberCount     int32  `json:"member_count"`
-	MaxMemberCount  int32  `json:"max_member_count"`
+	GroupID          int64  `json:"group_id"`
+	GroupName        string `json:"group_name"`
+	GroupMemo        string `json:"group_memo"`
+	GroupCreateTime  int32  `json:"group_create_time"`
+	GroupLevel       int32  `json:"group_level"`
+	MemberCount      int32  `json:"member_count"`
+	MaxMemberCount   int32  `json:"max_member_count"`
+	UnionGroupOpenID string `json:"union_group_openid,omitempty"`
 }
 
 func ConvertGuildToGroupInfo(guild *dto.Guild, GroupId string, message callapi.ActionMessage) *OnebotGroupInfo {
@@ -138,10 +138,11 @@ func HandleGetGroupInfo(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 			} else {
 				groupInfo = &OnebotGroupInfo{
 					Data: GroupInfo{
-						GroupID:     groupid,
-						GroupName:   info.GroupName,
-						GroupMemo:   info.GroupFingerMemo,
-						MemberCount: int32(info.GroupMemberNum),
+						GroupID:          groupid,
+						GroupName:        info.GroupName,
+						GroupMemo:        info.GroupFingerMemo,
+						MemberCount:      int32(info.GroupMemberNum),
+						UnionGroupOpenID: info.UnionGroupOpenID,
 					},
 					Message: "success",
 					RetCode: 0,
@@ -155,31 +156,10 @@ func HandleGetGroupInfo(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 			}
 		}
 
-		// 回退: 官方接口不可用时的模拟数据
+		// 官方接口不可用时返回标准失败响应, 不再伪造“测试群”数据
 		if groupInfo == nil {
-			groupCreateTime := time.Now().Unix()
-			// 创建 GroupInfo 实例
-			groupInfo1 := &GroupInfo{
-				GroupID:         groupid,
-				GroupName:       "测试群",
-				GroupMemo:       "这是一个测试群",
-				GroupCreateTime: int32(groupCreateTime),
-				GroupLevel:      0,
-				MemberCount:     500,
-				MaxMemberCount:  1000,
-			}
-			// 创建 OnebotGroupInfo 实例并嵌入 GroupInfo
-			groupInfo = &OnebotGroupInfo{
-				Data:    *groupInfo1, // 将 groupInfo 添加到 Data 切片中
-				Message: "success",
-				RetCode: 0,
-				Status:  "ok",
-			}
-			if message.Echo == "" {
-				groupInfo.Echo = "0"
-			} else {
-				groupInfo.Echo = message.Echo
-			}
+			callapi.SendAPIError(client, message, "get_group_info: 官方群信息接口调用失败(可能是群不存在或无权限)")
+			return "", nil
 		}
 	}
 	groupInfoMap := structToMap(groupInfo)

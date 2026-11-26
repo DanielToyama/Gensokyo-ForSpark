@@ -16,31 +16,33 @@ import (
 
 // GroupRequestEvent 表示群组请求事件的数据结构
 type GroupRequestEvent struct {
-	Comment     string `json:"comment"`
-	Flag        string `json:"flag"`
-	GroupID     int64  `json:"group_id"`
-	PostType    string `json:"post_type"`
-	RequestType string `json:"request_type"`
-	SelfID      int64  `json:"self_id"`
-	SubType     string `json:"sub_type"`
-	Time        int64  `json:"time"`
-	UserID      int64  `json:"user_id"`
-	RealUserID  string `json:"real_user_id,omitempty"`  //当前真实uid
-	RealGroupID string `json:"real_group_id,omitempty"` //当前真实gid
+	Comment          string `json:"comment"`
+	Flag             string `json:"flag"`
+	GroupID          int64  `json:"group_id"`
+	UnionGroupOpenID string `json:"union_group_openid,omitempty"`
+	PostType         string `json:"post_type"`
+	RequestType      string `json:"request_type"`
+	SelfID           int64  `json:"self_id"`
+	SubType          string `json:"sub_type"`
+	Time             int64  `json:"time"`
+	UserID           int64  `json:"user_id"`
+	RealUserID       string `json:"real_user_id,omitempty"`  //当前真实uid
+	RealGroupID      string `json:"real_group_id,omitempty"` //当前真实gid
 }
 
 // GroupNoticeEvent 表示群通知事件的数据结构
 type GroupNoticeEvent struct {
-	GroupID     int64  `json:"group_id"`
-	NoticeType  string `json:"notice_type"`
-	OperatorID  int64  `json:"operator_id"`
-	PostType    string `json:"post_type"`
-	SelfID      int64  `json:"self_id"`
-	SubType     string `json:"sub_type"`
-	Time        int64  `json:"time"`
-	UserID      int64  `json:"user_id"`
-	RealUserID  string `json:"real_user_id,omitempty"`  //当前真实uid
-	RealGroupID string `json:"real_group_id,omitempty"` //当前真实gid
+	GroupID          int64  `json:"group_id"`
+	UnionGroupOpenID string `json:"union_group_openid,omitempty"`
+	NoticeType       string `json:"notice_type"`
+	OperatorID       int64  `json:"operator_id"`
+	PostType         string `json:"post_type"`
+	SelfID           int64  `json:"self_id"`
+	SubType          string `json:"sub_type"`
+	Time             int64  `json:"time"`
+	UserID           int64  `json:"user_id"`
+	RealUserID       string `json:"real_user_id,omitempty"`  //当前真实uid
+	RealGroupID      string `json:"real_group_id,omitempty"` //当前真实gid
 }
 
 // 定义了一个符合 Client 接口的 SelfIntroduceClient 结构体
@@ -107,15 +109,16 @@ func (p *Processors) ProcessGroupAddBot(data *dto.GroupAddBotEvent) error {
 	}
 
 	Request = GroupRequestEvent{
-		Comment:     "",
-		Flag:        "",
-		GroupID:     GroupID64,
-		PostType:    "request",
-		RequestType: "group",
-		SelfID:      selfid64,
-		SubType:     "invite",
-		Time:        timestampInt64,
-		UserID:      userid64,
+		Comment:          "",
+		Flag:             "",
+		GroupID:          GroupID64,
+		UnionGroupOpenID: data.UnionGroupOpenID,
+		PostType:         "request",
+		RequestType:      "group",
+		SelfID:           selfid64,
+		SubType:          "invite",
+		Time:             timestampInt64,
+		UserID:           userid64,
 	}
 	//增强配置
 	if !config.GetNativeOb11() {
@@ -124,14 +127,15 @@ func (p *Processors) ProcessGroupAddBot(data *dto.GroupAddBotEvent) error {
 	}
 
 	Notice = GroupNoticeEvent{
-		GroupID:    GroupID64,
-		NoticeType: "group_increase",
-		OperatorID: 0,
-		PostType:   "notice",
-		SelfID:     selfid64,
-		SubType:    "invite",
-		Time:       timestampInt64,
-		UserID:     userid64,
+		GroupID:          GroupID64,
+		UnionGroupOpenID: data.UnionGroupOpenID,
+		NoticeType:       "group_increase",
+		OperatorID:       0,
+		PostType:         "notice",
+		SelfID:           selfid64,
+		SubType:          "invite",
+		Time:             timestampInt64,
+		UserID:           userid64,
 	}
 	//增强配置
 	if !config.GetNativeOb11() {

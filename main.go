@@ -33,8 +33,8 @@ import (
 	"github.com/hoshinonyaruko/gensokyo/handlers"
 	"github.com/hoshinonyaruko/gensokyo/httpapi"
 	"github.com/hoshinonyaruko/gensokyo/idmap"
-	"github.com/hoshinonyaruko/gensokyo/mylog"
 	"github.com/hoshinonyaruko/gensokyo/msgmap"
+	"github.com/hoshinonyaruko/gensokyo/mylog"
 	"github.com/hoshinonyaruko/gensokyo/server"
 	"github.com/hoshinonyaruko/gensokyo/sys"
 	"github.com/hoshinonyaruko/gensokyo/template"
@@ -66,13 +66,28 @@ func main() {
 	delcache := flag.Bool("del_cache", false, "delete cache bucket, it is safe")
 	compaction := flag.Bool("compaction", false, "compaction for apply db changes.")
 	m := flag.Bool("m", false, "Maintenance mode")
+	panel := flag.Bool("panel", false, "panel mode: skip double-click check, single instance, restart in same console")
 
 	// 解析命令行参数到定义的标志。
 	flag.Parse()
 
+	// 面板模式：配置 single_process、-panel 或 GENSOKYO_PANEL 任一开启即可。
+	// 必须在 sys.InitBase 之前判断，否则第三方面板无控制台启动时可能被双击保护拦截。
+	envPanel := strings.EqualFold(os.Getenv("GENSOKYO_PANEL"), "1") ||
+		strings.EqualFold(os.Getenv("GENSOKYO_PANEL"), "true") ||
+		strings.EqualFold(os.Getenv("GENSOKYO_PANEL"), "yes")
+	panelMode := *panel || envPanel || config.PeekSingleProcess("config.yml")
+	if panelMode {
+		sys.SetPanelMode(true)
+	}
+
 	// 检查是否使用了-faststart参数
 	if !*fastStart {
-		sys.InitBase() // 如果不是faststart模式，则执行初始化
+		if panelMode {
+			log.Println("[单进程模式] 已跳过 Windows 双击检测（第三方面板可正常捕获控制台）")
+		} else {
+			sys.InitBase() // 如果不是faststart模式，则执行初始化
+		}
 	}
 	if *tidy {
 		//备份配置 并刷新
@@ -105,6 +120,10 @@ func main() {
 		}
 
 		log.Println("请配置config.yml然后再次运行.")
+		if panelMode {
+			log.Println("[单进程模式] 不等待 Enter，进程将退出；请在面板中填写配置后重新启动。")
+			os.Exit(0)
+		}
 		log.Print("按下 Enter 继续...")
 		bufio.NewReader(os.Stdin).ReadBytes('\n')
 		os.Exit(0)
@@ -115,6 +134,16 @@ func main() {
 	conf, err := config.LoadConfig("config.yml", false)
 	if err != nil {
 		log.Fatalf("error: %v", err)
+	}
+
+	if conf.Settings.SingleProcess || panelMode {
+		if !sys.AcquireSingleProcessLock() {
+			log.Println("[单进程模式] 检测到已有 Gensokyo 实例正在运行，本进程退出。")
+			log.Println("[单进程模式] 请关闭旧的 exe/控制台窗口后再启动；如果旧进程已卡死，结束对应 PID 后重试。")
+			os.Exit(1)
+		}
+		defer sys.ReleaseSingleProcessLock()
+		log.Println("[单进程模式] 已启用：单实例、面板控制台输出、重启不新开窗口")
 	}
 
 	// 配置热重载

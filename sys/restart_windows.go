@@ -19,6 +19,27 @@ func NewRestarter() *WindowsRestarter {
 }
 
 func (r *WindowsRestarter) Restart(executablePath string) error {
+	// 面板模式：直接在同一个控制台/管道内启动子进程，不再用 `start` 新开窗口。
+	// 第三方面板只捕获父进程 stdout 时，旧实现会让日志“消失”在新窗口里。
+	if PanelMode() {
+		ReleaseSingleProcessLock()
+		exePath, err := os.Executable()
+		if err != nil {
+			exePath = executablePath
+		}
+		cmd := exec.Command(exePath, "-faststart")
+		cmd.Dir = filepath.Dir(exePath)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Env = os.Environ()
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		os.Exit(0)
+		return nil
+	}
+
 	// Separate the directory and the executable name
 	execDir, execName := filepath.Split(executablePath)
 

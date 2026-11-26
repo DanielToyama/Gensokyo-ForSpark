@@ -14,15 +14,16 @@ import (
 
 // OnebotSubscribeMessageNotice 订阅消息授权状态变更的 onebot 扩展 notice 事件
 type OnebotSubscribeMessageNotice struct {
-	GroupID    int64  `json:"group_id,omitempty"`
-	NoticeType string `json:"notice_type"` // subscribe_message_status
-	PostType   string `json:"post_type"`   // notice
-	SelfID     int64  `json:"self_id"`
-	Time       int64  `json:"time"`
-	OpenID     string `json:"openid,omitempty"` // 用户 OpenID（个人订阅场景）
-	Data       *dto.SubscribeMessageStatusEvent `json:"data,omitempty"`
-	RealUserID  string `json:"real_user_id,omitempty"`  //当前真实uid
-	RealGroupID string `json:"real_group_id,omitempty"` //当前真实gid
+	GroupID          int64                            `json:"group_id,omitempty"`
+	NoticeType       string                           `json:"notice_type"` // subscribe_message_status
+	PostType         string                           `json:"post_type"`   // notice
+	SelfID           int64                            `json:"self_id"`
+	Time             int64                            `json:"time"`
+	OpenID           string                           `json:"openid,omitempty"` // 用户 OpenID（个人订阅场景）
+	UnionGroupOpenID string                           `json:"union_group_openid,omitempty"`
+	Data             *dto.SubscribeMessageStatusEvent `json:"data,omitempty"`
+	RealUserID       string                           `json:"real_user_id,omitempty"`  //当前真实uid
+	RealGroupID      string                           `json:"real_group_id,omitempty"` //当前真实gid
 }
 
 // ProcessSubscribeMessageStatus 处理订阅消息授权状态变更事件 (SUBSCRIBE_MESSAGE_STATUS, Intent GROUP_AND_C2C_EVENT 1<<25)
@@ -47,13 +48,14 @@ func (p *Processors) ProcessSubscribeMessageStatus(data *dto.SubscribeMessageSta
 	}
 
 	notice := OnebotSubscribeMessageNotice{
-		GroupID:    GroupID64,
-		NoticeType: "subscribe_message_status",
-		PostType:   "notice",
-		SelfID:     selfid64,
-		Time:       time.Now().Unix(),
-		OpenID:     data.OpenID,
-		Data:       data,
+		GroupID:          GroupID64,
+		NoticeType:       "subscribe_message_status",
+		PostType:         "notice",
+		SelfID:           selfid64,
+		Time:             time.Now().Unix(),
+		OpenID:           data.OpenID,
+		UnionGroupOpenID: data.UnionGroupOpenID,
+		Data:             data,
 	}
 	//增强配置
 	if !config.GetNativeOb11() {

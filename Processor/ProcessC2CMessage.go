@@ -14,8 +14,8 @@ import (
 	"github.com/hoshinonyaruko/gensokyo/echo"
 	"github.com/hoshinonyaruko/gensokyo/handlers"
 	"github.com/hoshinonyaruko/gensokyo/idmap"
-	"github.com/hoshinonyaruko/gensokyo/mylog"
 	"github.com/hoshinonyaruko/gensokyo/msgmap"
+	"github.com/hoshinonyaruko/gensokyo/mylog"
 	"github.com/hoshinonyaruko/gensokyo/structs"
 	"github.com/tencent-connect/botgo/dto"
 	"github.com/tencent-connect/botgo/websocket/client"
@@ -150,8 +150,9 @@ func (p *Processors) ProcessC2CMessage(data *dto.WSC2CMessageData) error {
 			privateMsg.RealMessageType = "group_private"
 			privateMsg.IsBindedUserId = IsBindedUserId
 			privateMsg.RealUserID = data.Author.ID
-			privateMsg.Avatar, _ = GenerateAvatarURLV2(data.Author.ID)
+			privateMsg.Avatar = memberAvatar(data.Author)
 		}
+		privateMsg.Sender.Avatar = privateMsg.Avatar
 		// 根据条件判断是否添加Echo字段
 		if config.GetTwoWayEcho() {
 			privateMsg.Echo = echostr
@@ -289,8 +290,9 @@ func (p *Processors) ProcessC2CMessage(data *dto.WSC2CMessageData) error {
 				groupMsg.RealMessageType = "group_private"
 				groupMsg.IsBindedUserId = IsBindedUserId
 				groupMsg.RealUserID = data.Author.ID
-				groupMsg.Avatar, _ = GenerateAvatarURLV2(data.Author.ID)
+				groupMsg.Avatar = memberAvatar(data.Author)
 			}
+			groupMsg.Sender.Avatar = groupMsg.Avatar
 			//根据条件判断是否增加nick和card
 			var CaN = config.GetCardAndNick()
 			if CaN != "" {
@@ -430,17 +432,18 @@ func (p *Processors) ProcessC2CMessage(data *dto.WSC2CMessageData) error {
 					Area:   "0",
 					Level:  "0",
 				},
-				SubType: "normal",
-				Time:    time.Now().Unix(),
-				Platform:    "qq",
+				SubType:  "normal",
+				Time:     time.Now().Unix(),
+				Platform: "qq",
 			}
 
 			//增强配置
 			if !config.GetNativeOb11() {
 				groupMsg.RealMessageType = "group_private"
 				groupMsg.RealUserID = data.Author.ID
-				groupMsg.Avatar, _ = GenerateAvatarURLV2(data.Author.ID)
+				groupMsg.Avatar = memberAvatar(data.Author)
 			}
+			groupMsg.Sender.Avatar = groupMsg.Avatar
 			//根据条件判断是否增加nick和card
 			var CaN = config.GetCardAndNick()
 			if CaN != "" {

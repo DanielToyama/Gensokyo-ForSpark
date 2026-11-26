@@ -44,7 +44,7 @@ func HandleSetGroupKick(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 
 	// 应用端 user_id / user_ids: 反查 openid
 	ids := memberIDStrings(message.Params.UserID)
-	ids = append(ids, message.Params.UserIDs...)
+	ids = append(ids, memberIDStrings(message.Params.UserIDs)...)
 	for _, id := range ids {
 		if id == "" {
 			continue
@@ -86,19 +86,9 @@ func HandleSetGroupKick(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 		return "", nil
 	}
 
-	data := map[string]interface{}{
-		"remove_members_result":                 "",
-		"add_to_member_blacklist_fail_openids":  []string{},
-		"add_to_member_blacklist_fail_user_ids": []interface{}{},
-	}
 	if result != nil {
-		data["remove_members_result"] = result.RemoveMembersResult
-		failIDs := make([]interface{}, 0, len(result.AddToMemberBlacklistFailOpenIDs))
-		for _, openID := range result.AddToMemberBlacklistFailOpenIDs {
-			failIDs = append(failIDs, appUserIDValue(openID))
-		}
-		data["add_to_member_blacklist_fail_openids"] = result.AddToMemberBlacklistFailOpenIDs
-		data["add_to_member_blacklist_fail_user_ids"] = failIDs
+		mylog.Printf("set_group_kick: result[%v] add_blacklist_fail[%v]", result.RemoveMembersResult, result.AddToMemberBlacklistFailOpenIDs)
 	}
-	return sendGroupMgmtResponse(client, data, message)
+	// OneBot v11 标准成功响应 (data: null), 详细信息只写日志
+	return sendGroupMgmtResponse(client, nil, message)
 }

@@ -10,6 +10,10 @@ type Message struct {
 	GuildID string `json:"guild_id"`
 	// 群ID
 	GroupID string `json:"group_id"`
+	// 群统一标识 (绑定3方应用时有效, 2026-11-16)
+	UnionGroupOpenID string `json:"union_group_openid,omitempty"`
+	// 群内昵称 (2026-11-16)
+	MemberNickname string `json:"member_nickname,omitempty"`
 
 	// 内容
 	Content string `json:"content"`
@@ -31,6 +35,8 @@ type Message struct {
 	Mentions []*User `json:"mentions"`
 	// ark 消息
 	Ark *Ark `json:"ark"`
+	// 图文卡片消息 (2026-10-28)
+	Card *Card `json:"card,omitempty"`
 	// 私信消息
 	DirectMessage bool `json:"direct_message"`
 	// 子频道 seq，用于消息间的排序，seq 在同一子频道中按从先到后的顺序递增，不同的子频道之前消息无法排序
@@ -53,11 +59,12 @@ type Forum struct {
 
 // GroupAddBotEvent 表示群添加机器人事件的数据结构
 type GroupAddBotEvent struct {
-	ID             string      `json:"id"`
-	EventID        string      `json:"event_id"`
-	GroupOpenID    string      `json:"group_openid"`
-	OpMemberOpenID string      `json:"op_member_openid"`
-	Timestamp      interface{} `json:"timestamp"`
+	ID               string      `json:"id"`
+	EventID          string      `json:"event_id"`
+	GroupOpenID      string      `json:"group_openid"`
+	UnionGroupOpenID string      `json:"union_group_openid,omitempty"`
+	OpMemberOpenID   string      `json:"op_member_openid"`
+	Timestamp        interface{} `json:"timestamp"`
 }
 
 type GroupMsgRejectEvent struct {
@@ -114,7 +121,7 @@ type MediaResponse struct {
 	Ret int `json:"ret,omitempty"`
 }
 
-//群信息结构
+// 群信息结构
 type GroupMessageResponse struct {
 	MediaResponse *MediaResponse
 	Message       *Message

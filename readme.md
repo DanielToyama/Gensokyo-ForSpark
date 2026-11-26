@@ -73,6 +73,7 @@
 - **响应模式 `require_mention`**：默认「全量响应（所有消息都处理）」；如果只想让机器人响应 @ 它的消息，选「仅响应 @机器人」。
 - **主动消息 `allow_proactive_msg`**：推荐「允许主动发送」；需官方主动消息权限，否则会报 `40034105 主动消息失败, 无权限`。
 - **日志级别 `log_level`**：`info`（推荐）；排查问题选 `debug`，长期运行选 `error` 减少日志量。
+- **单进程/面板模式 `single_process`**：用宝塔、MCSManager、面板类工具启动 exe 时建议开启。它会跳过 Windows 双击检测（面板没有控制台时不会误弹“请勿双击”导致控制台空白）、限制同一个 exe 只运行一个实例，并让重启在当前控制台内完成，不再新开窗口。也可以临时用启动参数 `-panel` 或环境变量 `GENSOKYO_PANEL=1` 开启。
 
 ### ④ 群消息 @ 设置（默认关闭，按下游插件需要开启）
 
@@ -162,6 +163,8 @@ QQ 官方机器人**不支持** OneBot v11 的 `reply` 引用段（`{"type":"rep
 | SparkBridge 连不上 | 检查正向 WS 地址 `ws://127.0.0.1:<port>`，以及 `ws_server_token` 与 SparkBridge 的 `pwd` 是否一致 |
 | 配置生成了但没生效 | 确认文件名是 `config.yml`、放在程序同目录、并重启了进程 |
 | 机器人不回复群消息 | 确认 `text_intent` 勾了对应事件；群全量消息需官方权限；群管理事件需机器人是管理员 |
+| 第三方面板控制台全空白 | 开启 `single_process: true`（或启动参数加 `-panel` / 环境变量 `GENSOKYO_PANEL=1`）：跳过 Windows 双击检测，避免面板无控制台时误弹窗退出 |
+| 重启后出现多个 Gensokyo 窗口 | 开启 `single_process: true`：同一 exe 只允许一个实例，重启在当前控制台完成，不再 `start` 新窗口 |
 | 想改机器人昵称 | 生成后手动修改 `custom_bot_name` |
 
 ---
@@ -172,7 +175,9 @@ QQ 官方机器人**不支持** OneBot v11 的 `reply` 引用段（`{"type":"rep
 |---|---|
 | **群全量消息** | 订阅后可收到群内每条消息，不要求 @bot（需官方权限） |
 | **主动消息发送** | 无被动 `msg_id` 窗口也可直接发送（需官方权限） |
-| **群管理 API** | 入群审批、申请列表、群禁言/全员禁言、群成员列表/信息、批量移除成员、群黑名单、机器人群内状态、入群自动审批策略 |
+| **群管理 API** | 入群审批、申请列表、群禁言/全员禁言、群成员列表/信息、批量移除成员、群黑名单、机器人群内状态、入群自动审批策略、获取用户基本信息 |
+| **群消息私聊回复** | 用群消息 `message_id` 调 `send_private_msg` 私聊回复发送者 |
+| **图文卡片** | `send_group_card_msg` / `send_private_card_msg`（msg_type=8，`url`/`pic_url` 必须 https） |
 | **群管理事件** | 群成员加入/退出、入群申请、订阅消息状态 → OneBot notice/request |
 | **FakeReply 假回复** | `reply` 引用段文本伪造「回复 @昵称」 |
 | **真实 At（Markdown）** | 含 at 的群文本升级 markdown，渲染真实 @ |
@@ -209,6 +214,7 @@ settings:
   port: "15630"
   enable_ws_server: true
   ws_server_token: "你的正向WS令牌"
+  single_process: true        # 第三方面板启动/需要单实例时开启
 
   allow_proactive_msg: true   # 允许主动消息
   require_mention: false      # false=全量响应, true=仅@响应
@@ -233,7 +239,8 @@ settings:
 
 - **@ 能力分场景**：群 markdown 消息可渲染真 @（`at_markdown` 默认开启）；纯文本里的单成员 at 不渲染，降级为 `@昵称`；2026-10-26 起纯文本支持 `@全体成员`
 - **主动消息频控**：Bot 维度 60 QPM（未认证 30 QPM），单关系 20 QPM，不适合高频刷屏场景
-- **官方接口能力有限**：踢人、改群名、拉取成员列表等官方 API 没有，这类功能无法实现
+- **官方接口能力有限**：改群名、拉取成员列表等部分官方 API 没有；群成员列表/信息与踢人已通过官方 v2 适配
+- **全员禁言官方未开放写接口**：`restrict_chat_setting` 只支持成员级禁言，`global_rule` 只能在查询接口读到，`set_group_whole_ban` 默认返回失败；实验性降级（批量禁言当前群成员）需手动开启 `whole_ban_via_members`，风险自负
 - **群管理操作需管理员**：入群审批、群禁言等需要机器人是群管理员
 - **部分资料不可得**：QQ 等级、性别、年龄官方不提供（`get_stranger_info` 返回占位 / QQ 等级恒 9999）
 - **链接域名校验**：消息里的链接需过 QQ 域名校验，可用配置生成器的二维码/短链模式规避
@@ -250,8 +257,10 @@ settings:
 |---|---|
 | [DanielToyama 更新记录](docs/DanielToyama更新记录.md) | 全部 45 笔提交、按能力域整理的完整改动记录（GPLv3） |
 | [适配 API 清单](docs/适配API清单.md) | 本 fork 新增/专门适配的 API、参数、事件与 HTTP 路由 |
+| [官方更新兼容（2026-11）](docs/官方更新兼容-202611.md) | 群消息私聊回复、用户信息、昵称/头像、union_group_openid、图文卡片 |
+| [扩展 API 测试表](docs/扩展API测试表.md) | 仓库自带 `tools/onclient` 测试客户端、测试矩阵、用例与结果记录模板 |
 | [撤回消息](docs/撤回消息.md) | `delete_msg` 完整用法、四种会话对照、常见坑 |
-| [API 介绍](docs/api介绍.md) | 完整 API 文件索引（54 个动作） |
+| [API 介绍](docs/api介绍.md) | 完整 API 文件索引（56 个动作） |
 
 ## 致谢 / Acknowledgements
 
@@ -453,10 +462,10 @@ todo,正在施工中
 | /get_group_member_info√  | [获取群成员信息]（官方 v2，失败回退缓存） |
 | /get_group_member_list√  | [获取群成员列表]（官方 v2，失败回退本地） |
 | /get_group_honor_info    | [获取群荣誉信息]       |
-| /can_send_image√         | [检查是否可以发送图片] |
+| /can_send_image          | [检查是否可以发送图片] |
 | /can_send_record         | [检查是否可以发送语音] |
 | /get_version_info√       | [获取版本信息]         |
-| /set_restart√             | [重启 gensokyo]       |
+| /set_restart             | [重启 gensokyo]       |
 | /.handle_quick_operation | [对事件执行快速操作]   |
 
 
@@ -496,6 +505,9 @@ todo,正在施工中
 | /add_group_member_blacklist | [加入群黑名单]（成员需不在群内，单次最多 20 个） |
 | /remove_group_member_blacklist | [移出群黑名单]（单次最多 20 个） |
 | /batch_remove_group_members | [批量移除群成员]（`/set_group_kick` 的同义扩展名） |
+| /get_user_info | [获取用户基本信息]（官方 v2，2026-11-16，10 QPS） |
+| /send_group_card_msg | [发送群图文卡片]（msg_type=8，2026-10-28） |
+| /send_private_card_msg | [发送单聊图文卡片]（msg_type=8，2026-10-28） |
 
 > 兼容别名：`/get_group_ban` = `/set_group_ban`、`/get_group_whole_ban` = `/set_group_whole_ban`（上游早期误注册名，保留兼容）。
 >

@@ -15,17 +15,18 @@ import (
 
 // OnebotGroupJoinRequest 用户申请加群事件转换后的 onebot v11 request.group 事件 (带增强字段)
 type OnebotGroupJoinRequest struct {
-	Comment     string `json:"comment"` // 验证消息内容
-	Flag        string `json:"flag"`    // join_request_id, 审批(set_group_add_request)时回传
-	GroupID     int64  `json:"group_id"`
-	PostType    string `json:"post_type"`
-	RequestType string `json:"request_type"`
-	SelfID      int64  `json:"self_id"`
-	SubType     string `json:"sub_type"`
-	Time        int64  `json:"time"`
-	UserID      int64  `json:"user_id"`
-	RealUserID  string `json:"real_user_id,omitempty"`  //当前真实uid
-	RealGroupID string `json:"real_group_id,omitempty"` //当前真实gid
+	Comment          string `json:"comment"` // 验证消息内容
+	Flag             string `json:"flag"`    // join_request_id, 审批(set_group_add_request)时回传
+	GroupID          int64  `json:"group_id"`
+	UnionGroupOpenID string `json:"union_group_openid,omitempty"`
+	PostType         string `json:"post_type"`
+	RequestType      string `json:"request_type"`
+	SelfID           int64  `json:"self_id"`
+	SubType          string `json:"sub_type"`
+	Time             int64  `json:"time"`
+	UserID           int64  `json:"user_id"`
+	RealUserID       string `json:"real_user_id,omitempty"`  //当前真实uid
+	RealGroupID      string `json:"real_group_id,omitempty"` //当前真实gid
 
 	// 增强字段
 	Username     string `json:"username,omitempty"`                  // 申请人昵称
@@ -90,15 +91,16 @@ func (p *Processors) ProcessGroupJoinRequest(data *dto.GroupJoinRequestEvent) er
 	}
 
 	req := OnebotGroupJoinRequest{
-		Comment:     comment,
-		Flag:        data.JoinRequestID, // 审批接口回传
-		GroupID:     GroupID64,
-		PostType:    "request",
-		RequestType: "group",
-		SelfID:      selfid64,
-		SubType:     "add",
-		Time:        time.Now().Unix(),
-		UserID:      userid64,
+		Comment:          comment,
+		Flag:             data.JoinRequestID, // 审批接口回传
+		GroupID:          GroupID64,
+		UnionGroupOpenID: data.UnionGroupOpenID,
+		PostType:         "request",
+		RequestType:      "group",
+		SelfID:           selfid64,
+		SubType:          "add",
+		Time:             time.Now().Unix(),
+		UserID:           userid64,
 	}
 	//增强配置
 	if !config.GetNativeOb11() {

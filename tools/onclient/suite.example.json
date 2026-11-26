@@ -1,0 +1,214 @@
+{
+  "name": "Gensokyo-ForSpark 扩展 API 测试套件",
+  "requests": [
+    {
+      "id": "T01",
+      "name": "get_group_info",
+      "action": "get_group_info",
+      "params": { "group_id": "${group_id}" }
+    },
+    {
+      "id": "T02",
+      "name": "get_group_member_list",
+      "action": "get_group_member_list",
+      "params": { "group_id": "${group_id}" }
+    },
+    {
+      "id": "T03",
+      "name": "get_group_member_info(自己)",
+      "action": "get_group_member_info",
+      "params": { "group_id": "${group_id}", "user_id": "${user_id}" }
+    },
+    {
+      "id": "T04",
+      "name": "get_group_restrict_chat_setting",
+      "action": "get_group_restrict_chat_setting",
+      "params": { "group_id": "${group_id}" }
+    },
+    {
+      "id": "T05",
+      "name": "get_group_bot_state",
+      "action": "get_group_bot_state",
+      "params": { "group_id": "${group_id}" }
+    },
+    {
+      "id": "T06",
+      "name": "get_group_join_request_list",
+      "action": "get_group_join_request_list",
+      "params": { "group_id": "${group_id}" }
+    },
+    {
+      "id": "T07",
+      "name": "get_group_member_blacklist",
+      "action": "get_group_member_blacklist",
+      "params": { "group_id": "${group_id}" }
+    },
+    {
+      "id": "T08",
+      "name": "get_user_info(自己)",
+      "action": "get_user_info",
+      "params": { "user_id": "${user_id}" }
+    },
+    {
+      "id": "T09",
+      "name": "get_stranger_info(自己)",
+      "action": "get_stranger_info",
+      "params": { "user_id": "${user_id}" }
+    },
+    {
+      "id": "T10",
+      "name": "get_status",
+      "action": "get_status",
+      "params": {}
+    },
+
+    {
+      "id": "T11",
+      "name": "set_group_ban 缺省 duration(应为1800s)",
+      "action": "set_group_ban",
+      "params": { "group_id": "${group_id}", "user_id": "${victim_id}" },
+      "danger": true
+    },
+    {
+      "id": "T12",
+      "name": "set_group_ban duration=60",
+      "action": "set_group_ban",
+      "params": { "group_id": "${group_id}", "user_id": "${victim_id}", "duration": 60 },
+      "danger": true
+    },
+    {
+      "id": "T13",
+      "name": "set_group_ban 解禁(duration=0)",
+      "action": "set_group_ban",
+      "params": { "group_id": "${group_id}", "user_id": "${victim_id}", "duration": 0 },
+      "danger": true
+    },
+    {
+      "id": "T14",
+      "name": "set_group_whole_ban enable=true",
+      "action": "set_group_whole_ban",
+      "params": { "group_id": "${group_id}", "enable": true },
+      "danger": true
+    },
+    {
+      "id": "T15",
+      "name": "set_group_whole_ban enable=false",
+      "action": "set_group_whole_ban",
+      "params": { "group_id": "${group_id}", "enable": false },
+      "danger": true
+    },
+    {
+      "id": "T16",
+      "name": "set_group_kick 单人",
+      "action": "set_group_kick",
+      "params": { "group_id": "${group_id}", "user_id": "${victim_id}", "reject_add_request": false },
+      "danger": true
+    },
+    {
+      "id": "T17",
+      "name": "set_group_kick 批量(user_ids)",
+      "action": "set_group_kick",
+      "params": { "group_id": "${group_id}", "user_ids": ["${victim_id}"] },
+      "danger": true
+    },
+    {
+      "id": "T18",
+      "name": "add_group_member_blacklist",
+      "action": "add_group_member_blacklist",
+      "params": { "group_id": "${group_id}", "user_id": "${victim_id}" },
+      "danger": true
+    },
+    {
+      "id": "T19",
+      "name": "remove_group_member_blacklist",
+      "action": "remove_group_member_blacklist",
+      "params": { "group_id": "${group_id}", "user_id": "${victim_id}" },
+      "danger": true
+    },
+    {
+      "id": "T20",
+      "name": "send_private_msg 群消息私聊回复(需好友)",
+      "action": "send_private_msg",
+      "params": {
+        "user_id": "${user_id}",
+        "message_id": "${message_id}",
+        "message": "Gensokyo 群消息私聊回复测试"
+      },
+      "danger": true
+    },
+    {
+      "id": "T21",
+      "name": "send_group_card_msg 图文卡片",
+      "action": "send_group_card_msg",
+      "params": {
+        "group_id": "${group_id}",
+        "title": "Gensokyo API 测试卡片",
+        "description": "这是一条图文卡片测试消息",
+        "url": "https://example.com/notice",
+        "pic_url": "https://example.com/banner.png"
+      },
+      "danger": true
+    },
+    {
+      "id": "T22",
+      "name": "send_private_card_msg 单聊图文卡片(需好友)",
+      "action": "send_private_card_msg",
+      "params": {
+        "user_id": "${user_id}",
+        "message_id": "${message_id}",
+        "title": "Gensokyo 私聊卡片测试",
+        "description": "这是一条单聊图文卡片测试消息",
+        "url": "https://example.com/notice",
+        "pic_url": "https://example.com/banner.png"
+      },
+      "danger": true
+    },
+    {
+      "id": "T23",
+      "name": "set_group_add_request(需 flag)",
+      "action": "set_group_add_request",
+      "params": { "flag": "${flag}", "approve": true },
+      "danger": true
+    },
+    {
+      "id": "T24",
+      "name": "get_join_approval_strategy_list",
+      "action": "get_join_approval_strategy_list",
+      "params": {}
+    },
+    {
+      "id": "T25",
+      "name": "@全体成员失败回退",
+      "action": "send_group_msg",
+      "params": {
+        "group_id": "${group_id}",
+        "message": "回退测试 [CQ:at,qq=all] 正文必须送达"
+      },
+      "danger": true
+    },
+    {
+      "id": "T26",
+      "name": "delete_msg 撤回机器人自己的消息(需 message_id)",
+      "action": "delete_msg",
+      "params": { "message_id": "${message_id}" },
+      "danger": true
+    },
+    {
+      "id": "T27",
+      "name": "send_msg 显式 message_type=group",
+      "action": "send_msg",
+      "params": {
+        "message_type": "group",
+        "group_id": "${group_id}",
+        "message": [{ "type": "text", "data": { "text": "send_msg 测试" } }]
+      },
+      "danger": true
+    },
+    {
+      "id": "T28",
+      "name": "get_group_restrict_chat_setting(禁言后复查)",
+      "action": "get_group_restrict_chat_setting",
+      "params": { "group_id": "${group_id}" }
+    }
+  ]
+}

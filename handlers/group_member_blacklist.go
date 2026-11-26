@@ -82,7 +82,7 @@ func handleGroupMemberBlacklistOp(client callapi.Client, apiv2 openapi.OpenAPI, 
 		}
 	}
 	ids := memberIDStrings(message.Params.UserID)
-	ids = append(ids, message.Params.UserIDs...)
+	ids = append(ids, memberIDStrings(message.Params.UserIDs)...)
 	for _, id := range ids {
 		if id == "" {
 			continue

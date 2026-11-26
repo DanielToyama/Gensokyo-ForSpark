@@ -62,6 +62,7 @@ const (
 	userMeURI       uri = "/users/@me"
 	userMeGuildsURI uri = "/users/@me/guilds"
 	userMeDMURI     uri = "/users/@me/dms"
+	userInfoURI     uri = "/v2/users/{user_id}/info"
 
 	gatewayURI    uri = "/gateway" // nolint
 	gatewayBotURI uri = "/gateway/bot"

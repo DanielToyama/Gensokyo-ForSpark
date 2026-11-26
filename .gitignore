@@ -8,6 +8,8 @@ config.yml
 # Go specific
 gensokyo.exe
 gsk.exe
+/onclient
+/onclient.exe
 
 # Ignore channel_temp
 channel_temp/

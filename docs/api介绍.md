@@ -1,6 +1,6 @@
 # API 介绍
 
-目前支持的 API 列表（共 54 个动作，含兼容/同义别名）。
+目前支持的 API 列表（共 56 个动作，含兼容/同义别名）。
 
 具体 API 的定义请参考 [OneBot-11](https://github.com/botuniverse/onebot-11)。
 
@@ -13,7 +13,7 @@
 |---|---|---|
 | `/delete_msg` | delete_msg.go | 标准响应 + msgmap 反查（群/私聊/频道/频道私信）+ 支持撤回机器人自己发的消息 |
 | `/get_group_bot_state` | get_group_bot_state.go | 获取机器人群内状态（官方 v2） |
-| `/get_group_info` | get_group_info.go | 群类型返回官方真实群信息，失败回退模拟数据 |
+| `/get_group_info` | get_group_info.go | 群类型返回官方真实群信息；失败返回标准错误（不再伪造数据） |
 | `/get_group_join_request_list` | get_group_join_request_list.go | 拉取入群申请列表（官方 v2），附加 `comment` 增强字段 |
 | `/get_group_restrict_chat_setting` | get_group_restrict_chat_setting.go | 查询群禁言状态（官方 v2） |
 | `/get_status` | get_status.go | 对齐 LLOneBot bot 状态结构（`data.online/good/stat` + `wording`） |
@@ -37,6 +37,9 @@
 | `/get_group_member_blacklist` | group_member_blacklist.go | 查询群黑名单（内邀白名单） |
 | `/add_group_member_blacklist` | group_member_blacklist.go | 加入群黑名单（成员需不在群内，单次最多20） |
 | `/remove_group_member_blacklist` | group_member_blacklist.go | 移出群黑名单（单次最多20） |
+| `/get_user_info` | get_user_info.go | 获取用户基本信息（2026-11-16，GET /v2/users/{openid}/info） |
+| `/send_group_card_msg` | send_card_msg.go | 发送群图文卡片（msg_type=8） |
+| `/send_private_card_msg` | send_card_msg.go | 发送单聊图文卡片（msg_type=8） |
 | `/send_group_msg`、`/send_msg`、`/send_private_msg`、`/send_guild_channel_msg`、`/send_group_msg_async`、`/send_group_msg_raw`、`/send_private_msg_async`、`/send_private_msg_sse`、`/send_private_msg_wakeup`、`/send_msg_async`、`/send_group_forward_msg` | send_*.go | 发送链路统一适配：at 转文本/真 at、FakeReply、主动消息、出站消息入库（供撤回） |
 
 ## 二、上游已有 API
@@ -58,7 +61,6 @@
 | `/mark_msg_as_read` | mark_msg_as_read.go |
 | `/put_interaction` | put_interaction.go |
 | `/send_guild_channel_forum` | send_guild_channel_forum.go |
-| `/send_guild_private_msg` | send_guild_private_msg.go |
 | `/send_to_group` | send_group_msg.go |
 
 ## 三、相关文档

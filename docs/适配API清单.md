@@ -23,7 +23,7 @@
 | `group_id` | string/int | 否* | 群 ID；与 `user_id` 同时提供时走常规反查 |
 | `user_id` | string/int | 否* | 申请人 ID |
 | `flag` | string | 是 | 入群申请 ID（`join_request_id`），来自 `request.group` 事件 |
-| `approve` | bool | 否 | `true` = 通过；不传/`false` = 拒绝（兼容只传 `approve` 的 SparkBridge groupRequest 插件） |
+| `approve` | bool | 否 | `true` = 通过；不传时默认通过（OneBot v11 默认）；显式 `false` = 拒绝 |
 | `refuse` | bool | 否 | 兼容字段：`true` = 拒绝；不传 `approve` 时同样按拒绝处理 |
 | `reason` | string | 否 | 拒绝理由 |
 
@@ -52,7 +52,7 @@
 |---|---|---|---|
 | `group_id` | string/int | 是 | 群 ID |
 | `user_id` | string/int | 是 | 被禁言成员 ID |
-| `duration` | int | 是 | 禁言秒数；`0` = 解禁；官方最大 30 天 |
+| `duration` | int | 否 | 禁言秒数；默认 1800（30 分钟，OneBot v11 默认）；显式 `0` = 解禁；官方最大 30 天 |
 
 - 官方接口：`POST /v2/groups/{group_openid}/restrict_chat_setting`（`members[].op=add/del`）
 - 说明：本 fork 补上了原实现从未执行的群聊分支；频道分支沿用上游 `MemberMute`。
@@ -62,10 +62,27 @@
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `group_id` | string/int | 是 | 群 ID |
-| `enable` | bool | 是 | `true` = 全员禁言（`global_rule.mode=always`）；`false` = 解除（`none`） |
+| `enable` | bool | 否 | `true` = 全员禁言；`false` = 解除；缺省为 `true`（OneBot v11 默认） |
+| `duration` | int | 否 | 仅实验性降级模式使用：成员禁言秒数，默认 604800（7 天） |
 
-- 官方接口同上（`global_rule.mode`）。
-- 注意：官方文档当前只声明 `members` 可写，`global_rule` 为 **best-effort 透传**，平台不支持时会返回错误（仅日志）。
+**官方能力现状**：`POST /v2/groups/{group_openid}/restrict_chat_setting` **只支持 `members`（成员级禁言），没有 `global_rule` 写入字段**；`global_rule` 只能在 `GET` 查询里读到。因此官方接口层面**无法直接设置全员禁言**。
+
+实现分两层：
+
+1. 先尝试官方 `global_rule`（平台后续若开放即可直接生效，未来新入群成员也会被禁言）
+2. 失败后按配置决定：
+   - `whole_ban_via_members: false`（**默认**）→ 返回标准失败响应，说明官方未开放该能力，**不做任何批量写入**
+   - `whole_ban_via_members: true`（**实验性**）→ 降级为成员级批量操作：
+     - `enable=true`：拉取全部群成员 → 跳过群主/管理员/机器人 → 每 20 人一批 `members[].op=add`
+     - `enable=false`：查询当前被禁言成员 → 每 20 人一批 `members[].op=del`
+
+**实验性降级的风险**（务必了解后再开启）：
+
+- 依赖官方 2026-09-03 群成员列表接口（**内邀白名单**，无权限无法降级）
+- 只影响当前在群成员，**之后新入群的人不会被禁言**
+- 群成员多时会产生多次写请求（每批 20 人），可能部分失败
+- 解禁会把**其他管理员手动设置的成员禁言一并解除**
+- 建议只在测试群/小群使用，默认保持关闭
 
 #### `get_group_restrict_chat_setting` — 查询群禁言状态
 
@@ -137,7 +154,7 @@
 | `set_group_whole_ban` | 补上群聊分支：`global_rule.mode=always/none`（best-effort）。同时注册标准动作名（旧版误注册为 `get_group_whole_ban`） |
 | `set_group_kick` | 接入官方 `batch_remove_members`：支持单 `user_id` 或 `user_ids` 批量（单次最多 20），可同步加入群黑名单；同义扩展名 `batch_remove_group_members` |
 | `get_group_member_list` / `get_group_member_info` | 接入官方 2026-09-03 群成员接口；列表自动翻页，失败回退本地缓存/username 缓存 |
-| `get_group_info` | 群类型返回**官方真实群信息**（`group_name` / `group_memo` / `member_count`），接口失败回退原模拟数据（「测试群」） |
+| `get_group_info` | 群类型返回**官方真实群信息**（`group_name` / `group_memo` / `member_count`），接口失败返回标准错误（不再伪造「测试群」数据） |
 | `get_status` | 重写为 LLOneBot bot 状态结构：`data.{online,good,stat}` + 顶层 `wording`；`stat` 含真实 `message_received` / `message_sent` / `last_message_time` / `startup_time` |
 | `send_group_msg` / `send_msg` / `send_private_msg` 等发送链路 | ① 出站 at 段转 `@昵称` 文本（昵称缓存优先）；② `at_markdown` 开启时含 at 的群纯文本升级 markdown 真 at；③ `fake_reply` 开启时 `reply` 段文本伪造；④ 主动消息 `allow_proactive_msg`；⑤ 发送成功后出站消息入库，供撤回/fakeReply |
 
@@ -259,7 +276,6 @@ text_intent:
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `group_id` | string/int | 是 | 群 ID（应用端压缩 ID；`string_ob11` 时为群 openid） |
-| `cursor` | string | 否 | 分页游标，首页留空 |
 
 - 官方接口：`GET /v2/groups/{group_openid}/members`
 - 每页最多 30 条，适配层自动翻页聚合后返回完整列表
@@ -292,7 +308,7 @@ text_intent:
 
 - 官方接口：`POST /v2/groups/{group_openid}/batch_remove_members`
 - 同义扩展 action：`batch_remove_group_members`
-- 响应 `data`：`remove_members_result`、`add_to_member_blacklist_fail_openids`、`add_to_member_blacklist_fail_user_ids`
+- 响应：标准 `data: null`；`remove_members_result` 与拉黑失败列表写入日志
 - 频率 30 QPM；无内邀权限返回 11253
 
 ### 4. `get_group_member_blacklist` — 查询群黑名单
@@ -323,3 +339,18 @@ text_intent:
   - `remove_group_member_blacklist` → `op=del`
 - 响应 `data`：`{"op":"add|del","fail_openids":[...],"fail_user_ids":[...]}`
 - 频率 60 QPM；无内邀权限返回 11253
+
+---
+
+## 八、2026-11 官方更新适配
+
+| 动作 | 说明 |
+|---|---|
+| `get_user_info` | 获取用户基本信息（`GET /v2/users/{user_openid}/info`），10 QPS；无好友关系回退缓存 |
+| `send_private_msg` + 群消息 `message_id` | 用群消息 `msg_id` 私聊回复发送者（需好友关系，60 分钟/50 次规则见官方） |
+| `send_group_card_msg` | 群聊图文卡片（`msg_type=8`，`card.type=tuwen`） |
+| `send_private_card_msg` | 单聊图文卡片（`msg_type=8`） |
+
+> 详细说明与示例见 [官方更新兼容-202611.md](./官方更新兼容-202611.md)。
+>
+> 测试环境、测试矩阵与用例见 [扩展API测试表.md](./扩展API测试表.md)。

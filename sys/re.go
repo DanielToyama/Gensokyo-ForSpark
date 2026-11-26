@@ -176,6 +176,7 @@ func RestartApplication() {
 		os.Exit(1) // 出错时退出码不为0
 	}
 
+	ReleaseSingleProcessLock()
 	restarter := NewRestarter()
 	if err := restarter.Restart(execName); err != nil {
 		log.Println("Error restarting application:", err)
